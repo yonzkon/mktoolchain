@@ -15,6 +15,7 @@ usage()
 	echo "            rootfs_busybox"
 	echo "            rootfs_binutils"
 	echo "            rootfs_glibc"
+	echo "            rootfs_make"
 	echo "            rootfs_readline"
 	echo "            rootfs_bash"
 	echo "            rootfs_ncurses"
@@ -36,11 +37,11 @@ CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
 CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
 
 ARCH=$1
-COMMAND=$(tr [A-Z] [a-z] <<<$2)
+COMMAND=$(echo "$2" |tr [A-Z] [a-z])
 
 if [ -z "$3" ]; then
 	PREFIX=/opt/cross-$ARCH
-elif [ -z $(grep -e '^/' <<<$3) ]; then
+elif [ -z $(echo "$3" |grep -e '^/') ]; then
 	PREFIX=$(pwd)/$3
 else
 	PREFIX=$3
@@ -48,7 +49,7 @@ fi
 
 if [ -z "$4" ]; then
 	WORKSPACE=$(pwd)
-elif [ -z $(grep -e '^/' <<<$4) ]; then
+elif [ -z $(echo "$4" |grep -e '^/') ]; then
 	WORKSPACE=$(pwd)/$4
 else
 	WORKSPACE=$4
@@ -87,9 +88,9 @@ esac
 tarball_fetch_and_extract()
 {
 	local URI=$1
-	local TARBALL=$(sed -e 's/^.*\///g' <<<$URI)
-	local FULL=$(sed -e 's/\.tar.*$//g' <<<$TARBALL)
-	local NAME=$(sed -e 's/-.*$//g' <<<$FULL)
+	local TARBALL=$(echo "$URI" |sed -e 's/^.*\///g')
+	local FULL=$(echo "$TARBALL" |sed -e 's/\.tar.*$//g')
+	local NAME=$(echo "$FULL" |sed -e 's/-.*$//g')
 
 	if [ ! -e $TARBALL ]; then
 		echo "fetching $TARBALL..."
@@ -289,6 +290,21 @@ rootfs_glibc()
 	cd -
 }
 
+rootfs_make()
+{
+	local NAME=make
+	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-4.2.1.tar.gz
+	local BUILD=build-$FUNCNAME
+
+	tarball_fetch_and_extract $URI
+
+	mkdir -p $BUILD && cd $BUILD
+	../$NAME/configure --prefix=$ROOTFS/make --build=$MACHTYPE --host=$TARGET
+	make -j$JOBS
+	make install
+	cd -
+}
+
 rootfs_readline()
 {
 	#echo "[Unsolved Problem] missing simbol UP error ..."
@@ -318,7 +334,7 @@ rootfs_bash()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET --without-curses
+	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET
 	make -j$JOBS
 	make install
 	cd -
@@ -403,6 +419,8 @@ elif [ "$COMMAND" == "rootfs_binutils" ]; then
 	rootfs_binutils # r1
 elif [ "$COMMAND" == "rootfs_glibc" ]; then
 	rootfs_glibc # r2
+elif [ "$COMMAND" == "rootfs_make" ]; then
+	rootfs_make # r2
 elif [ "$COMMAND" == "rootfs_readline" ]; then
 	rootfs_readline # r3
 elif [ "$COMMAND" == "rootfs_bash" ]; then
