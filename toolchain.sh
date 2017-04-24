@@ -299,7 +299,8 @@ rootfs_make()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/make --build=$MACHTYPE --host=$TARGET
+	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET \
+		--without-guile
 	make -j$JOBS
 	make install
 	cd -
