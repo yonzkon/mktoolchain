@@ -269,7 +269,7 @@ rootfs_binutils()
 	local BUILD=build-$FUNCNAME
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET --disable-multilib
+	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET --disable-multilib
 	make -j$JOBS
 	make install
 	cd -
@@ -281,7 +281,7 @@ rootfs_glibc()
 	local BUILD=build-$FUNCNAME
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix= --build=$MACHTYPE --host=$TARGET \
+	../$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
 		--disable-multilib --with-headers=$PREFIX/$TARGET/include \
 		libc_cv_forced_unwind=yes \
 		libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
@@ -299,7 +299,7 @@ rootfs_make()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET \
+	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET \
 		--without-guile
 	make -j$JOBS
 	make install
@@ -318,7 +318,7 @@ rootfs_readline()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix= --build=$MACHTYPE --host=$TARGET \
+	../$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
 		--enable-shared --disable-static \
 		bash_cv_wcwidth_broken=yes
 	make -j$JOBS
@@ -335,7 +335,7 @@ rootfs_bash()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET
+	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET
 	make -j$JOBS
 	make install
 	cd -
@@ -350,7 +350,7 @@ rootfs_ncurses()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET \
+	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET \
 		--with-shared --without-gpm #--with-termlib
 	make -j$JOBS
 	make install #DESTDIR=$ROOTFS
@@ -366,7 +366,7 @@ rootfs_gdb()
 	tarball_fetch_and_extract $URI
 
 	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS --build=$MACHTYPE --host=$TARGET
+	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET
 	make -j$JOBS
 	make install
 	cd -
