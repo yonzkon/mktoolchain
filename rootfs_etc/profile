@@ -1,0 +1,11 @@
+# profile
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export LD_LIBRARY_PATH=/lib:/usr/lib
+export TZ=CST-8
+
+test $(id -u) -eq 0 && PS1="[\u@\H \W \A #\#]# " || PS1="[\u@\H \W \A #\#]$ "
+
+alias ll='ls -l --color=auto'
+alias l.='ls -dl .* --color=auto'
+alias vim=vi

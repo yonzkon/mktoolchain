@@ -1,0 +1,4 @@
+# .gitignore
+
+x86_64*
+arm*

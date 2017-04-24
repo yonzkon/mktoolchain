@@ -1,0 +1,38 @@
+#!/bin/sh
+
+. /etc/profile
+
+# proc sys tmp
+mount proc /proc -t proc
+mount sysfs /sys -t sysfs
+mount tmpfs /tmp -t tmpfs -o noatime,mode=1777
+mount tmpfs /var/tmp -t tmpfs -o noatime,mode=1777
+
+# mdev
+[ -d /dev/pts ] && umount /dev/pts
+[ -d /dev/shm ] && umount /dev/shm
+mount mdev /dev -t tmpfs
+mkdir /dev/pts
+mount devpts /dev/pts -t devpts
+mkdir /dev/shm
+mount tmpfs /dev/shm -t tmpfs
+echo /bin/mdev > /proc/sys/kernel/hotplug
+mdev -s
+
+# fstab
+fsck -Ay
+mount -o remount,rw /
+mount -a
+
+# coredump
+mkdir -p /var/core
+sysctl -w kernel.core_pattern=/var/core/core.%e_%p_%s_%t
+
+# ethernet
+#udhcpc
+
+# deamon
+syslogd
+crond -b
+inetd
+ntpd

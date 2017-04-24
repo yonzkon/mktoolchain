@@ -1,0 +1,1 @@
+/dev/mtdblock2  /           jffs2   defaults,noatime    0 0
