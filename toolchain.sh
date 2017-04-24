@@ -13,13 +13,13 @@ usage()
 	echo "            glibc"
 	echo "            gcc"
 	echo "            rootfs_busybox"
-	echo "            rootfs_binutils"
 	echo "            rootfs_glibc"
-	echo "            rootfs_make"
 	echo "            rootfs_readline"
-	echo "            rootfs_bash"
 	echo "            rootfs_ncurses"
 	echo "            rootfs_gdb"
+	echo "            rootfs_binutils"
+	echo "            rootfs_make"
+	echo "            rootfs_bash"
 	echo "            simplify_rootfs"
 	echo "  [PREFIX]  where to install the toolchain [default: /opt/cross_\$ARCH]"
 	echo "  [WORKSPACE] base directory which include the source files [default: $(pwd)]"
@@ -32,6 +32,13 @@ usage()
 PWD=$(pwd)
 SCRIPT_PATH=$0
 SCRIPT_DIR=${SCRIPT_PATH%/*}
+
+[[ $PATH =~ "$PREFIX/bin" ]] || PATH=$PATH:$PREFIX/bin
+#export PATH=$PREFIX/bin:$PATH
+#export LD_LIBRARY_PATH=$ROOTFS/lib
+#export C_INCLUDE_PATH=$ROOTFS/include
+#export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
+#export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
 
 CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
 CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
@@ -55,8 +62,6 @@ else
 	WORKSPACE=$4
 fi
 
-ROOTFS=$WORKSPACE/rootfs
-
 TARGET=$ARCH-unknown-linux-gnu
 [ "$ARCH" == "arm" ] && TARGET+=eabi
 
@@ -76,14 +81,27 @@ Darwin)
 	;;
 esac
 
-# PATH & export PATH
-# bash & '.' / source
-[[ $PATH =~ "$PREFIX/bin" ]] || PATH=$PATH:$PREFIX/bin
-#export PATH=$PREFIX/bin:$PATH
-#export LD_LIBRARY_PATH=$ROOTFS/lib
-#export C_INCLUDE_PATH=$ROOTFS/include
-#export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
-#export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
+ROOTFS=$WORKSPACE/rootfs
+ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
+
+MIRROR=http://mirrors.ustc.edu.cn
+
+URI_BINUTILS=$MIRROR/gnu/binutils/binutils-2.27.tar.bz2
+URI_LINUX=$MIRROR/kernel.org/linux/kernel/v4.x/linux-4.4.48.tar.xz
+URI_GLIBC=$MIRROR/gnu/glibc/glibc-2.23.tar.xz
+URI_GCC=$MIRROR/gnu/gcc/gcc-4.9.4/gcc-4.9.4.tar.bz2
+URI_GMP=$MIRROR/gnu/gmp/gmp-6.1.1.tar.xz
+URI_MPFR=$MIRROR/gnu/mpfr/mpfr-3.1.4.tar.xz
+URI_MPC=$MIRROR/gnu/mpc/mpc-1.0.3.tar.gz
+URI_ISL=http://isl.gforge.inria.fr/isl-0.14.tar.xz
+URI_CLOOG=http://www.bastoul.net/cloog/pages/download/cloog-0.18.4.tar.gz
+
+URI_BUSYBOX=https://www.busybox.net/downloads/busybox-1.24.2.tar.bz2
+URI_READLINE=$MIRROR/gnu/readline/readline-6.3.tar.gz
+URI_NCURSES=$MIRROR/gnu/ncurses/ncurses-5.9.tar.gz
+URI_GDB=$MIRROR/gnu/gdb/gdb-7.10.1.tar.xz
+URI_BASH=$MIRROR/gnu/bash/bash-4.3.30.tar.gz
+URI_MAKE=$MIRROR/gnu/make/make-4.2.1.tar.gz
 
 # common funcs
 tarball_fetch_and_extract()
@@ -110,14 +128,31 @@ tarball_fetch_and_extract()
 	fi
 }
 
+build_rootfs()
+{
+	local URI=$1
+	local TAR=${URI##*/}
+	local NAME=${TAR%-*}
+	local CONFIG=$2
+	local MAKEOPTS=$3
+	local BUILD=build-rootfs_$NAME
+
+	tarball_fetch_and_extract $URI
+
+	mkdir -p $BUILD && cd $BUILD
+	../$NAME/configure $CONFIG
+	make -j$JOBS $MAKEOPTS
+	make $MAKEOPTS install
+	cd -
+}
+
 # main
 binutils()
 {
 	local NAME=binutils
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-2.27.tar.bz2
 	local BUILD=build-$NAME
 
-	tarball_fetch_and_extract $URI
+	tarball_fetch_and_extract $URI_BINUTILS
 
 	mkdir -p $BUILD && cd $BUILD
 	../$NAME/configure --prefix=$PREFIX --target=$TARGET --disable-multilib
@@ -128,73 +163,29 @@ binutils()
 
 linux_uapi_headers()
 {
-	local NAME=linux
-	local URI=http://mirrors.ustc.edu.cn/kernel.org/linux/kernel/v4.x/$NAME-4.4.48.tar.xz
+	tarball_fetch_and_extract $URI_LINUX
 
-	tarball_fetch_and_extract $URI
-
-	cd $NAME
+	cd linux
 	local INNER_ARCH=$ARCH
 	[ "$ARCH" = i686 ] && INNER_ARCH=x86
 	make ARCH=$INNER_ARCH INSTALL_HDR_PATH=$PREFIX/$TARGET headers_install
 	cd -
 }
 
-gmp()
-{
-	local NAME=gmp
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-6.1.1.tar.xz
-
-	tarball_fetch_and_extract $URI
-}
-
-mpfr()
-{
-	local NAME=mpfr
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-3.1.4.tar.xz
-
-	tarball_fetch_and_extract $URI
-}
-
-mpc()
-{
-	local NAME=mpc
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-1.0.3.tar.gz
-
-	tarball_fetch_and_extract $URI
-}
-
-isl()
-{
-	local NAME=isl
-	local URI=http://isl.gforge.inria.fr/$NAME-0.14.tar.xz
-
-	tarball_fetch_and_extract $URI
-}
-
-cloog()
-{
-	local NAME=cloog
-	local URI=http://www.bastoul.net/cloog/pages/download/$NAME-0.18.4.tar.gz
-
-	tarball_fetch_and_extract $URI
-}
-
 gcc_compilers()
 {
 	local NAME=gcc
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-4.9.4/$NAME-4.9.4.tar.bz2
 	local BUILD=build-$NAME
 
-	tarball_fetch_and_extract $URI
+	tarball_fetch_and_extract $URI_GCC
 
 	# deps of gcc
 	cd $NAME
-	gmp
-	mpfr
-	mpc
-	isl
-	cloog
+	tarball_fetch_and_extract $URI_GMP
+	tarball_fetch_and_extract $URI_MPFR
+	tarball_fetch_and_extract $URI_MPC
+	tarball_fetch_and_extract $URI_ISL
+	tarball_fetch_and_extract $URI_CLOOG
 	cd -
 
 	# build gcc
@@ -208,10 +199,9 @@ gcc_compilers()
 glibc_headers_and_startup_files()
 {
 	local NAME=glibc
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-2.23.tar.xz
 	local BUILD=build-$NAME
 
-	tarball_fetch_and_extract $URI
+	tarball_fetch_and_extract $URI_GLIBC
 
 	mkdir -p $BUILD && cd $BUILD
 	../$NAME/configure --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
@@ -252,27 +242,11 @@ gcc()
 
 rootfs_busybox()
 {
-	local NAME=busybox
-	local URI=https://www.busybox.net/downloads/$NAME-1.24.2.tar.bz2
-	local BUILD=build-$FUNCNAME
+	tarball_fetch_and_extract $URI_BUSYBOX
 
-	tarball_fetch_and_extract $URI
-
-	cd $NAME
+	cd busybox
 	make gconfig && make -j$JOBS && make install
 	mkdir -p $ROOTFS && cp -a _install/* $ROOTFS
-	cd -
-}
-
-rootfs_binutils()
-{
-	local NAME=binutils
-	local BUILD=build-$FUNCNAME
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET --disable-multilib
-	make -j$JOBS
-	make install
 	cd -
 }
 
@@ -291,150 +265,38 @@ rootfs_glibc()
 	cd -
 }
 
-rootfs_make()
-{
-	local NAME=make
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-4.2.1.tar.gz
-	local BUILD=build-$FUNCNAME
-
-	tarball_fetch_and_extract $URI
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET \
-		--without-guile
-	make -j$JOBS
-	make install
-	cd -
-}
-
-rootfs_readline()
-{
-	#echo "[Unsolved Problem] missing simbol UP error ..."
-	#exit
-
-	local NAME=readline
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-6.3.tar.gz
-	local BUILD=build-$FUNCNAME
-
-	tarball_fetch_and_extract $URI
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
-		--enable-shared --disable-static \
-		bash_cv_wcwidth_broken=yes
-	make -j$JOBS
-	make install DESTDIR=$ROOTFS
-	cd -
-}
-
-rootfs_bash()
-{
-	local NAME=bash
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-4.3.30.tar.gz
-	local BUILD=build-$FUNCNAME
-
-	tarball_fetch_and_extract $URI
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET
-	make -j$JOBS
-	make install
-	cd -
-}
-
-rootfs_ncurses()
-{
-	local NAME=ncurses
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-5.9.tar.gz
-	local BUILD=build-$FUNCNAME
-
-	tarball_fetch_and_extract $URI
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET \
-		--with-shared --without-gpm #--with-termlib
-	make -j$JOBS
-	make install #DESTDIR=$ROOTFS
-	cd -
-}
-
-rootfs_gdb()
-{
-	local NAME=gdb
-	local URI=http://mirrors.ustc.edu.cn/gnu/$NAME/$NAME-7.10.1.tar.xz
-	local BUILD=build-$FUNCNAME
-
-	tarball_fetch_and_extract $URI
-
-	mkdir -p $BUILD && cd $BUILD
-	../$NAME/configure --prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET
-	make -j$JOBS
-	make install
-	cd -
-}
-
 simplify_rootfs()
 {
-	local from=$ROOTFS
-	local to=$ROOTFS/simplify
-
-	# lib
-	mkdir -p $to/lib
-	for item in libc libm libcrypt libdl libpthread libutil libresolv libnss_dns libthread_db; do
-		cp -dp $from/lib/$item.* $to/lib
-		cp -dp $from/lib/$item-* $to/lib
-	done
-	for item in ld- libreadline libncurses; do
-		cp -dp $from/lib/$item* $to/lib
-	done
-	cp -prd $from/lib/gconv $to/lib
-	rm $to/lib/*.a
-
-	# bin & sbin
-	cp -prd $from/bin $from/sbin $to
-
-	# strip
-	$TARGET-strip $to/lib/* $to/bin/* $to/sbin/* &>/dev/null
+	find $ROOTFS -type f -perm -0111 -exec $TARGET-strip {} \;
+	find $ROOTFS -type f -name '*.a' -exec rm {} \;
 }
 
 echo "start build and install to $PREFIX"
-
 cd $WORKSPACE
 
-if [ "$COMMAND" == "binutils" ]; then
-	binutils # 1
-elif [ "$COMMAND" == "linux_uapi_headers" ]; then
-	linux_uapi_headers # 2
-elif [ "$COMMAND" == "gcc_compilers" ]; then
-	gcc_compilers # 3
-elif [ "$COMMAND" == "glibc_headers_and_startup_files" ]; then
-	glibc_headers_and_startup_files # 4
-elif [ "$COMMAND" == "gcc_libgcc" ]; then
-	gcc_libgcc # 5
-elif [ "$COMMAND" == "glibc" ]; then
-	glibc # 6
-elif [ "$COMMAND" == "gcc" ]; then
-	gcc # 7
-elif [ "$COMMAND" == "rootfs_busybox" ]; then
-	rootfs_busybox # r0
-elif [ "$COMMAND" == "rootfs_binutils" ]; then
-	rootfs_binutils # r1
-elif [ "$COMMAND" == "rootfs_glibc" ]; then
-	rootfs_glibc # r2
-elif [ "$COMMAND" == "rootfs_make" ]; then
-	rootfs_make # r2
-elif [ "$COMMAND" == "rootfs_readline" ]; then
-	rootfs_readline # r3
-elif [ "$COMMAND" == "rootfs_bash" ]; then
-	rootfs_bash # r3
-elif [ "$COMMAND" == "rootfs_ncurses" ]; then
-	rootfs_ncurses # r4
-elif [ "$COMMAND" == "rootfs_gdb" ]; then
-	rootfs_gdb # r5
-elif [ "$COMMAND" == "simplify_rootfs" ]; then
-	simplify_rootfs # r6
-else
-	usage && exit
-fi
+case "$COMMAND" in
+	binutils) binutils;;
+	linux_uapi_headers) linux_uapi_headers;;
+	gcc_compilers) gcc_compilers;;
+	glibc_headers_and_startup_files) glibc_headers_and_startup_files;;
+	gcc_libgcc) gcc_libgcc;;
+	glibc) glibc;;
+	gcc) gcc;;
+	rootfs_busybox) rootfs_busybox ;;
+	rootfs_glibc) rootfs_glibc ;;
+	rootfs_readline) build_rootfs $URI_READLINE \
+		"$ROOTFS_CONFIG --prefix=/usr --libdir=/lib --enable-shared --disable-static" \
+		"DESTDIR=$ROOTFS" ;; #bash_cv_wcwidth_broken=yes
+	rootfs_ncurses) build_rootfs $URI_NCURSES \
+		"$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm" \
+		"-C ncurses" ;; #--with-termlib
+	rootfs_gdb) build_rootfs $URI_GDB "$ROOTFS_CONFIG" ;;
+	rootfs_binutils) build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib" ;;
+	rootfs_make) build_rootfs $URI_MAKE "$ROOTFS_CONFIG --without-guile" ;;
+	rootfs_bash) build_rootfs $URI_BASH "$ROOTFS_CONFIG" ;;
+	simplify_rootfs) simplify_rootfs ;;
+	*) usage && exit ;;
+esac
 
+echo "finished $COMMAND"
 cd $PWD

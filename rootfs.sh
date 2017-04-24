@@ -40,6 +40,7 @@ build_rootfs()
 	# /usr
 	mkdir -p usr/bin usr/sbin usr/lib usr/include usr/share usr/src usr/local
 	ln -sf lib usr/lib64
+	mkdir -p usr/lib/locale
 
 	# /var
 	mkdir -p var/lib var/lock var/log var/mail var/run var/spool var/tmp && chmod 1777 var/tmp
