@@ -55,7 +55,8 @@ else
 	WORKSPACE=$4
 fi
 
-ROOTFS=$PREFIX/rootfs
+ROOTFS=$WORKSPACE/rootfs
+
 TARGET=$ARCH-unknown-linux-gnu
 [ "$ARCH" == "arm" ] && TARGET+=eabi
 
