@@ -288,8 +288,8 @@ case "$COMMAND" in
 		"$ROOTFS_CONFIG --prefix=/usr --libdir=/lib --enable-shared --disable-static" \
 		"DESTDIR=$ROOTFS" ;; #bash_cv_wcwidth_broken=yes
 	rootfs_ncurses) build_rootfs $URI_NCURSES \
-		"$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm" \
-		"-C ncurses" ;; #--with-termlib
+		"$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib" \
+		"-C ncurses" ;;
 	rootfs_gdb) build_rootfs $URI_GDB "$ROOTFS_CONFIG" ;;
 	rootfs_binutils) build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib" ;;
 	rootfs_make) build_rootfs $URI_MAKE "$ROOTFS_CONFIG --without-guile" ;;
