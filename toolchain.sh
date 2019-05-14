@@ -33,13 +33,6 @@ PWD=$(pwd)
 SCRIPT_PATH=$0
 SCRIPT_DIR=${SCRIPT_PATH%/*}
 
-[[ $PATH =~ "$PREFIX/bin" ]] || PATH=$PATH:$PREFIX/bin
-#export PATH=$PREFIX/bin:$PATH
-#export LD_LIBRARY_PATH=$ROOTFS/lib
-#export C_INCLUDE_PATH=$ROOTFS/include
-#export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
-#export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
-
 CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
 CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
 
@@ -64,6 +57,12 @@ fi
 
 TARGET=$ARCH-unknown-linux-gnu
 [ "$ARCH" == "arm" ] && TARGET+=eabi
+
+[[ $PATH =~ "$PREFIX/bin" ]] || PATH=$PATH:$PREFIX/bin
+#export LD_LIBRARY_PATH=$ROOTFS/lib
+#export C_INCLUDE_PATH=$ROOTFS/include
+#export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
+#export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
 
 case $(uname -s) in
 Linux)
