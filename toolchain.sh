@@ -204,7 +204,7 @@ glibc_headers_and_startup_files()
 
 	mkdir -p $BUILD && cd $BUILD
 	../$NAME/configure --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
-		--disable-multilib --with-headers=$PREFIX/$TARGET/include \
+		--disable-multilib --with-headers=$PREFIX/$TARGET/include --without-selinux \
 		libc_cv_forced_unwind=yes \
 		libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
 	make install-bootstrap-headers=yes install-headers
