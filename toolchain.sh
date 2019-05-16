@@ -85,14 +85,14 @@ ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
 
 MIRROR=http://mirrors.ustc.edu.cn
 
-URI_BINUTILS=$MIRROR/gnu/binutils/binutils-2.27.tar.bz2
-URI_LINUX=$MIRROR/kernel.org/linux/kernel/v4.x/linux-4.4.48.tar.xz
-URI_GLIBC=$MIRROR/gnu/glibc/glibc-2.23.tar.xz
-URI_GCC=$MIRROR/gnu/gcc/gcc-4.9.4/gcc-4.9.4.tar.bz2
-URI_GMP=$MIRROR/gnu/gmp/gmp-6.1.1.tar.xz
-URI_MPFR=$MIRROR/gnu/mpfr/mpfr-3.1.4.tar.xz
-URI_MPC=$MIRROR/gnu/mpc/mpc-1.0.3.tar.gz
-URI_ISL=http://isl.gforge.inria.fr/isl-0.14.tar.xz
+URI_BINUTILS=$MIRROR/gnu/binutils/binutils-2.32.tar.bz2
+URI_LINUX=$MIRROR/kernel.org/linux/kernel/v4.x/linux-4.4.179.tar.xz
+URI_GLIBC=$MIRROR/gnu/glibc/glibc-2.27.tar.xz
+URI_GCC=$MIRROR/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.xz
+URI_GMP=$MIRROR/gnu/gmp/gmp-6.1.2.tar.xz
+URI_MPFR=$MIRROR/gnu/mpfr/mpfr-4.0.2.tar.xz
+URI_MPC=$MIRROR/gnu/mpc/mpc-1.1.0.tar.gz
+URI_ISL=http://isl.gforge.inria.fr/isl-0.21.tar.xz
 URI_CLOOG=http://www.bastoul.net/cloog/pages/download/cloog-0.18.4.tar.gz
 
 URI_BUSYBOX=https://www.busybox.net/downloads/busybox-1.24.2.tar.bz2
