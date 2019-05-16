@@ -1,4 +1,9 @@
 # .gitignore
 
-x86_64*
-arm*
+build-*
+_install
+
+binutils*
+linux*
+gcc*
+glibc*
