@@ -1,9 +1,6 @@
 # .gitignore
 
-build-*
-_install
-
-binutils*
-linux*
-gcc*
-glibc*
+dist/
+src/
+build/
+_install/
