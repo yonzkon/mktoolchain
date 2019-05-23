@@ -98,11 +98,6 @@ sub build_libgcc {
     my $make_cmd = "cd $build; make -j$options::jobs all-target-libgcc && ".
     "make install-target-libgcc && "."touch .installed-libgcc";
 
-    $ENV{C_INCLUDE_PATH} = "$options::destdir/$options::target/include";
-    $ENV{CPLUS_INCLUDE_PATH} = "$options::destdir/$options::target/include";
-    $ENV{LD_LIBRARY_PATH} = "$options::destdir/$options::target/lib";
-    $ENV{PKG_CONFIG_PATH} = "$options::destdir/$options::target/lib/pkgconfig";
-
     die "make failed" if system($make_cmd);
 }
 
@@ -110,15 +105,15 @@ sub build_all_gcc {
     my $build = "$build_dir/$all_uri[7]->[0]-$all_uri[7]->[1]";
     return if -e "$build/.installed";
 
-    $ENV{C_INCLUDE_PATH} = "$options::destdir/$options::target/include";
-    $ENV{CPLUS_INCLUDE_PATH} = "$options::destdir/$options::target/include";
-    $ENV{LD_LIBRARY_PATH} = "$options::destdir/$options::target/lib";
-    $ENV{PKG_CONFIG_PATH} = "$options::destdir/$options::target/lib/pkgconfig";
+    #$ENV{C_INCLUDE_PATH} = "$options::destdir/$options::target/include";
+    #$ENV{CPLUS_INCLUDE_PATH} = "$options::destdir/$options::target/include";
+    #$ENV{LD_LIBRARY_PATH} = "$options::destdir/$options::target/lib";
+    #$ENV{PKG_CONFIG_PATH} = "$options::destdir/$options::target/lib/pkgconfig";
 
-    my $make_cmd = "cd $build; make -j$options::jobs CXXFLAGS=-fpermissive && make install && touch .installed";
+    my $make_cmd = "cd $build; make -j$options::jobs all-target-libstdc++-v3 && make install-target-libstdc++-v3 && touch .installed";
     die "make failed" if system($make_cmd);
-    my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed'`;
-    system("cd $build/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
+    #my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed'`;
+    #system("cd $build/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
 }
 
 sub build_glibc {
@@ -129,7 +124,7 @@ sub build_glibc {
         # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
         my $config_cmd = "cd $build; $src/configure --prefix=$options::destdir/$options::target --host=$options::target --disable-multilib --without-selinux ".
         "--with-headers=$options::destdir/$options::target/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
-        my $make_cmd = "cd $build; make install-headers && ".
+        my $make_cmd = "cd $build; make install-bootstrap-headers=yes install-headers && ".
         "touch $options::destdir/$options::target/include/gnu/stubs.h && ".
         "make -j$options::jobs csu/subdir_lib && install csu/crt1.o csu/crti.o csu/crtn.o $options::destdir/$options::target/lib && " .
         "$options::target-gcc -nostdlib -nostartfiles -shared -x c /dev/null -o $options::destdir/$options::target/lib/libc.so && ".
@@ -155,7 +150,7 @@ sub build_glibc {
         # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
         $config_cmd = "cd $build; $src/configure --prefix= --host=$options::target --disable-multilib --without-selinux ".
         "--with-headers=$options::destdir/$options::target/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
-        $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$options::destdir/$options::target".
+        $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$options::destdir/$options::target/libc".
 
         system($config_cmd);
         die "make failed" if system($make_cmd);
