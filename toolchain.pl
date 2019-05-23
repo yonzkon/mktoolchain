@@ -117,6 +117,8 @@ sub build_all_gcc {
 
     my $make_cmd = "cd $build; make -j$options::jobs CXXFLAGS=-fpermissive && make install && touch .installed";
     die "make failed" if system($make_cmd);
+    my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed'`;
+    system("cd $build/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
 }
 
 sub build_glibc {
