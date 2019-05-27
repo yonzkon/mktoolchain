@@ -150,8 +150,10 @@ sub build_glibc {
         "--with-headers=$install_root/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
         $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$install_root/libc && touch .installed";
 
-        system($config_cmd);
+        die "configure failed" if system($config_cmd);
         die "make failed" if system($make_cmd);
         system("cd $install_root/libc/lib; sed -i 's#/lib/##g' libc.so libm.so libpthread.so");
+
+        system("cp -a $install_root/libc/* $install_root/ && rm -rf $install_root/libc");
     }
 }
