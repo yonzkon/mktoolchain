@@ -110,8 +110,10 @@ sub build_all_gcc {
 
     my $make_cmd = "cd $build; make -j$options::jobs all-target-libstdc++-v3 && make install-target-libstdc++-v3 && touch .installed";
     die "make failed" if system($make_cmd);
-    my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed'`;
-    system("cd $build/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
+
+    my $src = "src/$all_uri[7]->[0]-$all_uri[7]->[1]";
+    my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed' |xargs readlink -f`;
+    system("cd $src/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
 }
 
 sub build_glibc {
