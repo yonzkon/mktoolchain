@@ -148,7 +148,7 @@ sub build_glibc {
     if (! -e "$build/.installed") {
         mkdir $build;
         # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
-        $config_cmd = "cd $build; $src/configure --prefix= --host=$options::target --disable-multilib --without-selinux ".
+        $config_cmd = "cd $build; $src/configure --prefix=/usr --host=$options::target --disable-multilib --without-selinux ".
         "--with-headers=$install_root/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
         $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$install_root/libc && touch .installed";
 
