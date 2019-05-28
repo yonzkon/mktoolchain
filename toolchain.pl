@@ -108,7 +108,7 @@ sub build_all_gcc {
     #$ENV{LD_LIBRARY_PATH} = "$options::destdir/$options::target/lib";
     #$ENV{PKG_CONFIG_PATH} = "$options::destdir/$options::target/lib/pkgconfig";
 
-    my $make_cmd = "cd $build; make -j$options::jobs all-target-libstdc++-v3 && make install-target-libstdc++-v3 && touch .installed";
+    my $make_cmd = "cd $build; make -j$options::jobs && make install && touch .installed";
     die "make failed" if system($make_cmd);
 
     my $src = "src/$all_uri[7]->[0]-$all_uri[7]->[1]";
