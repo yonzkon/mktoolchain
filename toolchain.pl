@@ -140,6 +140,9 @@ sub build_glibc {
         # all glibc
         my $make_cmd = "cd $build; make -j$options::jobs && make install && touch .installed";
         die "make failed" if system($make_cmd);
+
+        # FIXME: modify libc.so ?
+        #system("cd $install_root; find . -name 'libc.so' -o -name 'libm.so' -name 'libpthread.so' |xargs sed -i 's#/.*/##g'");
     }
 
     build_all_gcc();
@@ -154,8 +157,8 @@ sub build_glibc {
 
         die "configure failed" if system($config_cmd);
         die "make failed" if system($make_cmd);
-        system("cd $install_root/libc/lib; sed -i 's#/lib/##g' libc.so libm.so libpthread.so");
 
-        system("cp -a $install_root/libc/* $install_root/ && rm -rf $install_root/libc");
+        # FIXME: modify libc.so ?
+        #system("cd $install_root/libc; find . -name 'libc.so' -o -name 'libm.so' -name 'libpthread.so' |xargs sed -i 's#/.*/##g'");
     }
 }
