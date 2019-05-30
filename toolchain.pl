@@ -22,6 +22,8 @@ $tarball::dist_dir = $script_dir . '/dist';
 $tarball::src_dir = $script_dir . '/src';
 my $build_dir = $script_dir . "/build/target-$options::target";
 
+my $sysroot = "$options::destdir/$options::target/libc";
+
 my $mirror = 'http://mirrors.ustc.edu.cn';
 
 my @all_uri = (
@@ -54,7 +56,7 @@ sub build_binutils {
     my $build = shift;
     return if -e "$build/.installed";
 
-    my $config_cmd = "cd $build; $src/configure --prefix=$options::destdir --target=$options::target --disable-multilib";
+    my $config_cmd = "cd $build; $src/configure --prefix=$options::destdir --with-sysroot=$sysroot --target=$options::target --disable-multilib";
     my $make_cmd = "cd $build; make -j$options::jobs && make install && touch .installed";
 
     die "configure failed" if system($config_cmd);
@@ -68,7 +70,7 @@ sub build_linux {
 
     my $inner_arch = $options::arch;
     $inner_arch = 'x86' if $inner_arch eq 'i686';
-    my $make_cmd = "cd $src; make ARCH=$inner_arch INSTALL_HDR_PATH=$options::destdir/$options::target headers_install && touch .installed";
+    my $make_cmd = "cd $src; make ARCH=$inner_arch INSTALL_HDR_PATH=$sysroot/usr headers_install && touch .installed";
 
     die "make failed" if system($make_cmd);
 }
@@ -85,7 +87,7 @@ sub build_gcc {
         #system("cp -a $build/../$name-$version $build/$name");
     }
 
-    my $config_cmd = "cd $build; $src/configure --prefix=$options::destdir --target=$options::target --enable-languages=c,c++ --disable-multilib";
+    my $config_cmd = "cd $build; $src/configure --prefix=$options::destdir --with-sysroot=$sysroot --target=$options::target --enable-languages=c,c++ --disable-multilib";
     my $make_cmd = "cd $build; make -j$options::jobs all-gcc && make install-gcc && touch .installed-gcc-compilers";
     die "configure failed" if system($config_cmd);
     die "make failed" if system($make_cmd);
@@ -119,14 +121,14 @@ sub build_all_gcc {
 sub build_glibc {
     my $src = shift;
     my $build = shift;
-    my $install_root = "$options::destdir/$options::target";
 
     if (! -e "$build/.installed-glibc-headers") {
+        my $install_root = "$sysroot/usr";
         # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
-        my $config_cmd = "cd $build; $src/configure --prefix=$install_root --host=$options::target --disable-multilib --without-selinux ".
+        my $config_cmd = "cd $build; $src/configure --prefix=/usr --host=$options::target --disable-multilib --without-selinux ".
         "--with-headers=$install_root/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
-        my $make_cmd = "cd $build; make install-bootstrap-headers=yes install-headers && touch $install_root/include/gnu/stubs.h && ".
-        "make -j$options::jobs csu/subdir_lib && install csu/crt1.o csu/crti.o csu/crtn.o $install_root/lib && ".
+        my $make_cmd = "cd $build; make install-bootstrap-headers=yes install-headers install_root=$sysroot && touch $install_root/include/gnu/stubs.h && ".
+        "make -j$options::jobs csu/subdir_lib && mkdir -p $install_root/lib && install csu/crt1.o csu/crti.o csu/crtn.o $install_root/lib && ".
         "$options::target-gcc -nostdlib -nostartfiles -shared -x c /dev/null -o $install_root/lib/libc.so && ".
         "touch .installed-glibc-headers";
 
@@ -138,27 +140,9 @@ sub build_glibc {
 
     if (! -e "$build/.installed") {
         # all glibc
-        my $make_cmd = "cd $build; make -j$options::jobs && make install && touch .installed";
+        my $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$sysroot && touch .installed";
         die "make failed" if system($make_cmd);
-
-        # FIXME: modify libc.so ?
-        #system("cd $install_root; find . -name 'libc.so' -o -name 'libm.so' -name 'libpthread.so' |xargs sed -i 's#/.*/##g'");
     }
 
     build_all_gcc();
-
-    $build = $build . "-rootfs";
-    if (! -e "$build/.installed") {
-        mkdir $build;
-        # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
-        $config_cmd = "cd $build; $src/configure --prefix=/usr --host=$options::target --disable-multilib --without-selinux ".
-        "--with-headers=$install_root/include libc_cv_forced_unwind=yes libc_cv_ssp=no libc_cv_ssp_strong=no";
-        $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$install_root/libc && touch .installed";
-
-        die "configure failed" if system($config_cmd);
-        die "make failed" if system($make_cmd);
-
-        # FIXME: modify libc.so ?
-        #system("cd $install_root/libc; find . -name 'libc.so' -o -name 'libm.so' -name 'libpthread.so' |xargs sed -i 's#/.*/##g'");
-    }
 }
