@@ -70,6 +70,7 @@ sub build_linux {
 
     my $inner_arch = $options::arch;
     $inner_arch = 'x86' if $inner_arch eq 'i686';
+    $inner_arch = 'arm64' if $inner_arch eq 'aarch64';
     my $make_cmd = "cd $src; make ARCH=$inner_arch INSTALL_HDR_PATH=$sysroot/usr headers_install && touch .installed";
 
     die "make failed" if system($make_cmd);

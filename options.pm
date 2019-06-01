@@ -35,9 +35,12 @@ sub parse_args() {
         usage() && exit 0;
     }
 
-    $target = "${arch}-unknown-linux-gnu";
-    if ($arch eq 'arm') {
-        $target = "${target}eabi";
+    if ($arch eq 'x86_64') {
+        $target = "${arch}-unknown-linux-gnu";
+    } elsif ($arch eq 'arm') {
+        $target = "${arch}-linux-gnueabi";
+    } else {
+        $target = "${arch}-linux-gnu";
     }
 
     if ($jobs < 1) {
