@@ -9,6 +9,7 @@ use Cwd;
 our $help = 0;
 our $verbose = 0;
 our $arch = 'arm';
+our $libc = "glibc";
 our $destdir = "";
 our $target = "";
 our $jobs = 1;
@@ -18,6 +19,7 @@ sub usage {
     print "  --help|-h         display this page\n";
     print "  --verbose         verbose mode \n";
     print "  --arch <arg>      arm | i686 | x86_64 | ...\n";
+    print "  --libc <arg>      which libc implementation to use, glibc or musl\n";
     print "  --destdir <arg>   where to install the toolchain\n";
     print "  --jobs <arg>      pass to make\n";
 }
@@ -27,6 +29,7 @@ sub parse_args() {
         'help|h' => \$help,
         'verbose|v' => \$verbose,
         'arch=s' => \$arch,
+        'libc=s' => \$libc,
         'destdir=s' => \$destdir,
         'jobs|j=i' => \$jobs,
     ) or die $!;
@@ -56,6 +59,7 @@ sub parse_args() {
         print "help: $help\n";
         print "verbose: $verbose\n";
         print "arch: $arch\n";
+        print "libc: $libc\n";
         print "destdir: $destdir\n";
         print "target: $target\n";
         print "jobs: $jobs\n";

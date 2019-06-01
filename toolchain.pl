@@ -17,10 +17,10 @@ my $script_dir = dirname(File::Spec->rel2abs(__FILE__));
 mkdir 'dist';
 mkdir 'src';
 mkdir "build";
-mkdir "build/target-$options::target";
+mkdir "build/$options::target-$options::libc";
 $tarball::dist_dir = $script_dir . '/dist';
 $tarball::src_dir = $script_dir . '/src';
-my $build_dir = $script_dir . "/build/target-$options::target";
+my $build_dir = $script_dir . "/build/$options::target-$options::libc";
 
 my $sysroot = "$options::destdir/$options::target/libc";
 
@@ -35,8 +35,15 @@ my @all_uri = (
     ['isl',      '0.14',    "http://isl.gforge.inria.fr/isl-0.14.tar.xz"],
     ['cloog',    '0.18.4',  "http://www.bastoul.net/cloog/pages/download/cloog-0.18.4.tar.gz"],
     ['gcc',      '6.3.0',   "$mirror/gnu/gcc/gcc-6.3.0/gcc-6.3.0.tar.bz2", \&build_gcc],
-    ['glibc',    '2.23',    "$mirror/gnu/glibc/glibc-2.23.tar.xz", \&build_glibc],
 );
+
+if ($options::libc eq 'glibc') {
+    push @all_uri, ['glibc', '2.23', "$mirror/gnu/glibc/glibc-2.23.tar.xz", \&build_glibc];
+} elsif ($options::libc eq 'musl') {
+    push @all_uri, ['musl', '1.1.22', "https://www.musl-libc.org/releases/musl-1.1.22.tar.gz", \&build_musl];
+} else {
+    die "un-support libc implementation.";
+}
 
 foreach my $item (@all_uri) {
     my $name = $item->[0];
@@ -142,6 +149,35 @@ sub build_glibc {
     if (! -e "$build/.installed") {
         # all glibc
         my $make_cmd = "cd $build; make -j$options::jobs && make install install_root=$sysroot && touch .installed";
+        die "make failed" if system($make_cmd);
+    }
+
+    build_all_gcc();
+}
+
+sub build_musl {
+    my $src = shift;
+    my $build = shift;
+
+    if (! -e "$build/.installed-headers") {
+        my $install_root = "$sysroot/usr";
+        my $config_cmd = "cd $build; $src/configure --prefix=/usr --host=$options::target";
+        my $make_cmd = "cd $build;";
+        my $make_cmd = "cd $build; make install-headers DESTDIR=$sysroot && mkdir -p $install_root/include/gnu && touch $install_root/include/gnu/stubs.h && ".
+        "make -j$options::jobs; mkdir -p $install_root/lib && install lib/crt1.o lib/crti.o lib/crtn.o $install_root/lib && ".
+        "$options::target-gcc -nostdlib -nostartfiles -shared -x c /dev/null -o $install_root/lib/libc.so && ".
+        "touch .installed-headers";
+
+        die "configure failed" if system($config_cmd);
+        die "make failed" if system($make_cmd);
+    }
+
+    build_libgcc();
+
+    if (! -e "$build/.installed") {
+        my $config_cmd = "cd $build; $src/configure --prefix=/usr --host=$options::target";
+        my $make_cmd = "cd $build; make clean && make -j$options::jobs && make install DESTDIR=$sysroot && touch .installed";
+        die "configure failed" if system($config_cmd);
         die "make failed" if system($make_cmd);
     }
 
