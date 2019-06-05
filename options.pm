@@ -51,7 +51,7 @@ sub parse_args() {
     }
 
     if ($destdir eq "") {
-        $destdir = getcwd . "/_install/$arch";
+        $destdir = getcwd . "/_install/$arch-$libc";
     }
     $ENV{PATH} = "$ENV{PATH}:$destdir/bin";
 
