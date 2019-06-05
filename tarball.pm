@@ -45,25 +45,36 @@ sub src_exists {
 sub fetch_tarball {
     my $uri = shift;
     my $tarball = uri_strip_last($uri);
+    my $rc;
 
     print "downloading $tarball ...\n";
-    return system("curl $uri -o $dist_dir/$tarball");
+    $rc = system("curl $uri -o $dist_dir/$tarball");
+    system("rm -rf $dist_dir/$tarball") if $rc;
+    return $rc;
 }
 
 sub extract_tarball {
     my $tarball = shift;
     my $name = $tarball;
     $name =~ s/.tar.*//;
+    my $rc;
+
     print "extracting $tarball ...\n";
-    return system("tar -xf $dist_dir/$tarball -C $src_dir && touch $src_dir/$name/.extracted");
+    $rc = system("tar -xf $dist_dir/$tarball -C $src_dir && touch $src_dir/$name/.extracted");
+    system("rf -rf $src_dir/$name") if $rc;
+    return $rc;
 }
 
 sub fetch_and_extract {
     my $uri = shift;
     my $name = uri_strip_last($uri);
 
-    fetch_tarball($uri) if ! dist_exists($name);
-    extract_tarball($name) if ! src_exists($name);
+    if (!dist_exists($name)) {
+        return -1 if fetch_tarball($uri)
+    }
+    if (!src_exists($name)) {
+        return -1 if extract_tarball($name)
+    }
 }
 
 1;

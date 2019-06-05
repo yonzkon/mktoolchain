@@ -56,7 +56,8 @@ foreach my $item (@all_uri) {
     my $uri = $item->[2];
     my $handler = $item->[3];
 
-    fetch_and_extract($uri);
+    die "\nFetch or extract $uri failed." if fetch_and_extract($uri);
+
     if ($handler) {
         mkdir "$build_dir/$name-$version";
         $handler->("$tarball::src_dir/$name-$version",
