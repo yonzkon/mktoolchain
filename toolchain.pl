@@ -2,17 +2,17 @@
 
 package main;
 
-#use strict;
+use strict;
 use File::Basename;
 use File::Spec;
 
-my $script_dir = dirname(File::Spec->rel2abs(__FILE__));
-BEGIN {push(@INC, "$script_dir");}
-
+use lib dirname(File::Spec->rel2abs(__FILE__));
 use options;
 use tarball;
 
 options::parse_args();
+
+my $script_dir = dirname(File::Spec->rel2abs(__FILE__));
 
 mkdir 'dist';
 mkdir 'src';
