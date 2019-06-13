@@ -24,8 +24,8 @@ my $build_dir = $script_dir . "/build/$options::target";
 
 my $sysroot = "$options::destdir/$options::target/libc";
 
-#my $mirror = 'http://mirrors.ustc.edu.cn';
-my $mirror = 'http://mirrors.tuna.tsinghua.edu.cn';
+my $mirror = 'http://mirrors.ustc.edu.cn';
+#my $mirror = 'http://mirrors.tuna.tsinghua.edu.cn';
 
 my @all_uri = (
     ['binutils', '2.27',    "$mirror/gnu/binutils/binutils-2.27.tar.bz2", \&build_binutils],
