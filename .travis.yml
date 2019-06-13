@@ -1,0 +1,16 @@
+os:
+  - linux
+
+compiler: gcc
+language: c
+sudo: require
+dist: trusty
+fail_fast: true
+
+script:
+  - ./make.pl --arch arm --libc glibc -j2
+  - ./make.pl --arch arm --libc musl -j2
+  - ./make.pl --arch aarch64 --libc glibc -j2
+  - ./make.pl --arch aarch64 --libc musl -j2
+  - ./make.pl --arch x86_64 --libc glibc -j2
+  - ./make.pl --arch x86_64 --libc musl -j2
