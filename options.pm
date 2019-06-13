@@ -39,11 +39,18 @@ sub parse_args() {
     }
 
     if ($arch eq 'x86_64') {
-        $target = "${arch}-unknown-linux-gnu";
+        $target = "${arch}-unknown-linux";
     } elsif ($arch eq 'arm') {
-        $target = "${arch}-linux-gnueabi";
-    } else {
-        $target = "${arch}-linux-gnu";
+        $target = "${arch}-linux";
+    }
+
+    if ($libc eq 'glibc') {
+        $target = "${target}-gnu";
+        if ($arch eq 'arm') {
+            $target = "${target}eabi";
+        }
+    } elsif ($libc eq 'musl') {
+        $target = "${target}-musl";
     }
 
     if ($jobs < 1) {

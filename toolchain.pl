@@ -17,10 +17,10 @@ my $script_dir = dirname(File::Spec->rel2abs(__FILE__));
 mkdir 'dist';
 mkdir 'src';
 mkdir "build";
-mkdir "build/$options::target-$options::libc";
+mkdir "build/$options::target";
 $tarball::dist_dir = $script_dir . '/dist';
 $tarball::src_dir = $script_dir . '/src';
-my $build_dir = $script_dir . "/build/$options::target-$options::libc";
+my $build_dir = $script_dir . "/build/$options::target";
 
 my $sysroot = "$options::destdir/$options::target/libc";
 
