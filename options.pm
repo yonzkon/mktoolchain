@@ -18,10 +18,10 @@ sub usage {
     print "Usage: " . basename($0) . " [options]\n";
     print "  --help|-h         display this page\n";
     print "  --verbose         verbose mode \n";
-    print "  --arch <arg>      arm | i686 | x86_64 | ...\n";
-    print "  --libc <arg>      which libc implementation to use, glibc or musl\n";
-    print "  --destdir <arg>   where to install the toolchain\n";
-    print "  --jobs <arg>      pass to make\n";
+    print "  --arch <arg>      arm | aarch64 | x86_64 [default: arm]\n";
+    print "  --libc <arg>      glibc | musl [default: glibc]\n";
+    print "  --destdir <arg>   where to install the toolchain [default: ./_install/arm-glibc]\n";
+    print "  --jobs|-j <arg>   pass to make\n";
 }
 
 sub parse_args() {
