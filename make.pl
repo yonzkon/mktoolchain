@@ -22,7 +22,7 @@ $tarball::dist_dir = $script_dir . '/dist';
 $tarball::src_dir = $script_dir . '/src';
 my $build_dir = $script_dir . "/build/$options::target";
 
-my $sysroot = "$options::destdir/$options::target/libc";
+my $sysroot = "$options::destdir/$options::target/sysroot";
 
 my $mirror = 'http://mirrors.ustc.edu.cn';
 #my $mirror = 'http://mirrors.tuna.tsinghua.edu.cn';
@@ -63,6 +63,11 @@ foreach my $item (@all_uri) {
         $handler->("$tarball::src_dir/$name-$version",
                    "$build_dir/$name-$version");
     }
+}
+
+sub finish_build {
+    system("cd $sysroot/..; ln -sf sysroot libc");
+    system("cd $sysroot/usr; ln -sf include sys-include");
 }
 
 sub build_binutils {
@@ -208,6 +213,8 @@ sub build_glibc {
     }
 
     build_all_gcc();
+
+    finish_build();
 }
 
 sub build_musl {
@@ -251,4 +258,6 @@ sub build_musl {
     }
 
     build_all_gcc();
+
+    finish_build();
 }
