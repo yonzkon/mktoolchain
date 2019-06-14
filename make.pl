@@ -24,12 +24,13 @@ my $build_dir = $script_dir . "/build/$options::target";
 
 my $sysroot = "$options::destdir/$options::target/sysroot";
 
-my $mirror = 'http://mirrors.ustc.edu.cn';
-#my $mirror = 'http://mirrors.tuna.tsinghua.edu.cn';
+#my $mirror = 'http://mirrors.ustc.edu.cn';
+my $mirror = 'http://mirrors.tuna.tsinghua.edu.cn';
 
 my @all_uri = (
     ['binutils', '2.27',    "$mirror/gnu/binutils/binutils-2.27.tar.bz2", \&build_binutils],
-    ['linux',    '4.4.179', "$mirror/kernel.org/linux/kernel/v4.x/linux-4.4.179.tar.xz", \&build_linux],
+#    ['linux',    '4.4.179', "$mirror/kernel.org/linux/kernel/v4.x/linux-4.4.179.tar.xz", \&build_linux],
+    ['linux',    '4.4.179', "$mirror/kernel/v4.x/linux-4.4.179.tar.xz", \&build_linux],
     ['gmp',      '6.1.2',   "$mirror/gnu/gmp/gmp-6.1.2.tar.xz"],
     ['mpfr',     '3.1.4',   "$mirror/gnu/mpfr/mpfr-3.1.4.tar.xz"],
     ['mpc',      '1.0.3',   "$mirror/gnu/mpc/mpc-1.0.3.tar.gz"],
