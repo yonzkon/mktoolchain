@@ -40,7 +40,7 @@ sub parse_args() {
 
     if ($arch eq 'x86_64') {
         $target = "${arch}-unknown-linux";
-    } elsif ($arch eq 'arm') {
+    } else {
         $target = "${arch}-linux";
     }
 
