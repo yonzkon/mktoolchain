@@ -162,7 +162,7 @@ sub build_all_gcc {
     die "make failed" if system($make_cmd);
 
     my $src = "src/$all_uri[5]->[0]-$all_uri[5]->[1]";
-    my $limits_hdr = `find _install/ -name 'limits.h' |grep 'include-fixed' |xargs readlink -f`;
+    my $limits_hdr = `find $options::destdir -name 'limits.h' |grep 'include-fixed' |xargs readlink -f`;
     system("cd $src/gcc; cat limitx.h glimits.h limity.h > $limits_hdr");
 }
 
