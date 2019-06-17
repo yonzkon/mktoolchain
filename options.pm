@@ -20,7 +20,7 @@ sub usage {
     print "  --verbose         verbose mode \n";
     print "  --arch <arg>      arm | aarch64 | x86_64 [default: arm]\n";
     print "  --libc <arg>      glibc | musl [default: glibc]\n";
-    print "  --destdir <arg>   where to install the toolchain [default: ./_install/arm-glibc]\n";
+    print "  --destdir <arg>   where to install the toolchain [default: ./_install/gcc-arm-glibc]\n";
     print "  --jobs|-j <arg>   pass to make\n";
 }
 
@@ -58,7 +58,7 @@ sub parse_args() {
     }
 
     if ($destdir eq "") {
-        $destdir = getcwd . "/_install/$arch-$libc";
+        $destdir = getcwd . "/_install/gcc-$arch-$libc";
     }
     $ENV{PATH} = "$ENV{PATH}:$destdir/bin";
 
