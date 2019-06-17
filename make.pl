@@ -133,6 +133,10 @@ sub build_gcc {
         "--enable-shared ".
         "--enable-threads ".
         "--enable-languages=c,c++";
+    if ($options::arch eq 'aarch64') {
+        $config_cmd .= ' --enable-fix-cortex-a53-835769 '
+            .'--enable-fix-cortex-a53-843419 --with-arch=armv8-a';
+    }
     my $make_cmd = "cd $build; ".
         "make -j$options::jobs all-gcc && ".
         "make install-gcc && ".
