@@ -46,11 +46,12 @@ sub parse_args() {
 
     if ($libc eq 'glibc') {
         $target = "${target}-gnu";
-        if ($arch eq 'arm') {
-            $target = "${target}eabi";
-        }
     } elsif ($libc eq 'musl') {
         $target = "${target}-musl";
+    }
+
+    if ($arch eq 'arm') {
+        $target = "${target}eabi";
     }
 
     if ($jobs < 1) {
