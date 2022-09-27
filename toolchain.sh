@@ -21,7 +21,7 @@ usage()
     echo "            rootfs_make"
     echo "            rootfs_bash"
     echo "            simplify_rootfs"
-    echo "  [PREFIX]  where to install the toolchain [default: /opt/cross_\$ARCH]"
+    echo "  [PREFIX]  where to install the toolchain [default: $(pwd)/_install/$ARCH]"
     echo "  [WORKSPACE] base directory which include the source files [default: $(pwd)]"
 }
 
@@ -40,7 +40,7 @@ ARCH=$1
 COMMAND=$(echo "$2" |tr [A-Z] [a-z])
 
 if [ -z "$3" ]; then
-    PREFIX=/opt/cross-$ARCH
+    PREFIX=$(pwd)/_install/$ARCH
 elif [ -z $(echo "$3" |grep -e '^/') ]; then
     PREFIX=$(pwd)/$3
 else
@@ -55,14 +55,10 @@ else
     WORKSPACE=$4
 fi
 
-TARGET=$ARCH-unknown-linux-gnu
+TARGET=$ARCH-none-linux-gnu
 [ "$ARCH" == "arm" ] && TARGET+=eabi
 
 [[ $PATH =~ "$PREFIX/bin" ]] || PATH=$PATH:$PREFIX/bin
-#export LD_LIBRARY_PATH=$ROOTFS/lib
-#export C_INCLUDE_PATH=$ROOTFS/include
-#export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
-#export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
 
 case $(uname -s) in
 Linux)
@@ -80,8 +76,27 @@ Darwin)
     ;;
 esac
 
-ROOTFS=$WORKSPACE/rootfs
-ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
+DIST_DIR=$WORKSPACE/dist
+SRC_DIR=$WORKSPACE/src
+BUILD_DIR=$WORKSPACE/build
+mkdir -p $DIST_DIR $SRC_DIR $BUILD_DIR
+
+if [[ $COMMAND =~ "rootfs" ]]; then
+    ROOTFS=$PREFIX-rootfs
+    ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
+    # env below is not necesarry as set --host=$TARGET
+    #CC=$TARGET-gcc
+    #CXX=$TARGET-g++
+    #CPP=$TARGET-cpp
+    #AS=$TARGET-as
+    #LD=$TARGET-ld
+    #STRIP=$TARGET-strip
+    LD_LIBRARY_PATH=$ROOTFS/lib
+    C_INCLUDE_PATH=$ROOTFS/include
+    CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
+    PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
+    RPATH='-Wl,-rpath,$$\ORIGIN:$$\ORIGIN/../lib'
+fi
 
 source $SCRIPT_DIR/version-gcc-4.9.4
 
@@ -90,23 +105,21 @@ tarball_fetch_and_extract()
 {
     local URI=$1
     local TARBALL=$(echo "$URI" |sed -e 's/^.*\///g')
-    local FULL=$(echo "$TARBALL" |sed -e 's/\.tar.*$//g')
-    local NAME=$(echo "$FULL" |sed -e 's/-.*$//g')
+    local NAME=$(echo "$TARBALL" |sed -e 's/\.tar.*$//g')
 
-    if [ ! -e $TARBALL ]; then
+    if [ ! -e $DIST_DIR/$TARBALL ]; then
         echo "fetching $TARBALL..."
-        curl $URI -o $TARBALL
+        curl $URI -o $DIST_DIR/$TARBALL
         if [ $? -ne 0 ]; then
-            rm $TARBALL
+            rm $DIST_DIR/$TARBALL
             echo "failed to fetch $TARBALL...exit"
             exit
         fi
     fi
 
-    if [ ! -e $FULL ]; then
+    if [ ! -e $SRC_DIR/$NAME ]; then
         echo "extracting $TARBALL..."
-        tar -xf $TARBALL
-        ln -sf $FULL $NAME
+        tar -xf $DIST_DIR/$TARBALL -C $SRC_DIR
     fi
 }
 
@@ -121,8 +134,9 @@ build_rootfs()
 
     tarball_fetch_and_extract $URI
 
-    mkdir -p $BUILD && cd $BUILD
-    ../$NAME/configure $CONFIG
+    local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    $SRC_DIR/$NAME/configure $CONFIG
     make -j$JOBS $MAKEOPTS
     make $MAKEOPTS install
     cd -
@@ -131,13 +145,11 @@ build_rootfs()
 # main
 binutils()
 {
-    local NAME=binutils
-    local BUILD=build-$NAME
-
     tarball_fetch_and_extract $URI_BINUTILS
 
-    mkdir -p $BUILD && cd $BUILD
-    ../$NAME/configure --prefix=$PREFIX --target=$TARGET --disable-multilib
+    local NAME=$(echo "$URI_BINUTILS" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    $SRC_DIR/$NAME/configure --prefix=$PREFIX --target=$TARGET --disable-multilib
     make -j$JOBS
     make install
     cd -
@@ -147,7 +159,8 @@ linux_uapi_headers()
 {
     tarball_fetch_and_extract $URI_LINUX
 
-    cd linux
+    local NAME=$(echo "$URI_LINUX" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    cd $SRC_DIR/$NAME
     local INNER_ARCH=$ARCH
     [ "$ARCH" = i686 ] && INNER_ARCH=x86
     make ARCH=$INNER_ARCH INSTALL_HDR_PATH=$PREFIX/$TARGET headers_install
@@ -156,23 +169,34 @@ linux_uapi_headers()
 
 gcc_compilers()
 {
-    local NAME=gcc
-    local BUILD=build-$NAME
-
     tarball_fetch_and_extract $URI_GCC
-
-    # deps of gcc
-    cd $NAME
     tarball_fetch_and_extract $URI_GMP
     tarball_fetch_and_extract $URI_MPFR
     tarball_fetch_and_extract $URI_MPC
     #tarball_fetch_and_extract $URI_ISL
     #tarball_fetch_and_extract $URI_CLOOG
+
+    local NAME=$(echo "$URI_GCC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+
+    # deps of gcc
+    cd $SRC_DIR/$NAME
+    local NAME_GMP=$(echo "$URI_GMP" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    local NAME_GMP_SHORT=$(echo "$NAME_GMP" |sed -e 's/-.*$//g')
+    ln -sf ../$NAME_GMP $NAME_GMP_SHORT
+
+    local NAME_MPFR=$(echo "$URI_MPFR" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    local NAME_MPFR_SHORT=$(echo "$NAME_MPFR" |sed -e 's/-.*$//g')
+    ln -sf ../$NAME_MPFR $NAME_MPFR_SHORT
+
+    local NAME_MPC=$(echo "$URI_MPC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    local NAME_MPC_SHORT=$(echo "$NAME_MPC" |sed -e 's/-.*$//g')
+    ln -sf ../$NAME_MPC $NAME_MPC_SHORT
     cd -
 
     # build gcc
-    mkdir -p $BUILD && cd $BUILD
-    ../$NAME/configure --prefix=$PREFIX --target=$TARGET --enable-languages=c,c++ --disable-multilib
+    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    $SRC_DIR/$NAME/configure --prefix=$PREFIX --target=$TARGET \
+        --enable-languages=c,c++ --disable-multilib
     make -j$JOBS all-gcc
     make install-gcc
     cd -
@@ -180,13 +204,11 @@ gcc_compilers()
 
 glibc_headers_and_startup_files()
 {
-    local NAME=glibc
-    local BUILD=build-$NAME
-
     tarball_fetch_and_extract $URI_GLIBC
 
-    mkdir -p $BUILD && cd $BUILD
-    ../$NAME/configure --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
+    local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    $SRC_DIR/$NAME/configure --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
         --disable-multilib --with-headers=$PREFIX/$TARGET/include --without-selinux \
         libc_cv_forced_unwind=yes \
         libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
@@ -200,7 +222,8 @@ glibc_headers_and_startup_files()
 
 gcc_libgcc()
 {
-    cd build-gcc
+    local NAME=$(echo "$URI_GCC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    cd $BUILD_DIR/$TARGET/$NAME
     make -j$JOBS all-target-libgcc
     make install-target-libgcc
     cd -
@@ -208,7 +231,8 @@ gcc_libgcc()
 
 glibc()
 {
-    cd build-glibc
+    local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    cd $BUILD_DIR/$TARGET/$NAME
     make -j$JOBS
     make install
     cd -
@@ -216,7 +240,8 @@ glibc()
 
 gcc()
 {
-    cd build-gcc
+    local NAME=$(echo "$URI_GCC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    cd $BUILD_DIR/$TARGET/$NAME
     make -j$JOBS
     make install
     cd -
@@ -226,19 +251,22 @@ rootfs_busybox()
 {
     tarball_fetch_and_extract $URI_BUSYBOX
 
-    cd busybox
-    make gconfig && make -j$JOBS && make install
+    local NAME=$(echo "$URI_BUSYBOX" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    cp -a $SRC_DIR/$NAME/* .
+    # please disable rpc feature of inetd manully
+    make menuconfig
+    make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS
+    # busybox use "./_install" as default install dir like us
     mkdir -p $ROOTFS && cp -a _install/* $ROOTFS
     cd -
 }
 
 rootfs_glibc()
 {
-    local NAME=glibc
-    local BUILD=build-$FUNCNAME
-
-    mkdir -p $BUILD && cd $BUILD
-    ../$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
+    local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    $SRC_DIR/$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
         --disable-multilib --with-headers=$PREFIX/$TARGET/include \
         libc_cv_forced_unwind=yes \
         libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
@@ -267,7 +295,7 @@ case "$COMMAND" in
     gcc) gcc;;
     rootfs_busybox) rootfs_busybox ;;
     rootfs_glibc) rootfs_glibc ;;
-    rootfs_readline) build_rootfs $URI_READLINE \
+    rootfs_readline) export bash_cv_wcwidth_broken=yes && build_rootfs $URI_READLINE \
         "$ROOTFS_CONFIG --prefix=/usr --libdir=/lib --enable-shared --disable-static" \
         "DESTDIR=$ROOTFS" ;; #bash_cv_wcwidth_broken=yes
     rootfs_ncurses) build_rootfs $URI_NCURSES \
