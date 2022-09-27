@@ -277,8 +277,9 @@ rootfs_glibc()
 
 simplify_rootfs()
 {
-    find $ROOTFS -type f -perm -0111 -exec $TARGET-strip {} \;
-    find $ROOTFS -type f -name '*.a' -exec rm {} \;
+    cp -a $ROOTFS $ROOTFS-stripped
+    find $ROOTFS-stripped -type f -perm -0111 -exec $TARGET-strip {} \;
+    find $ROOTFS-stripped -type f -name '*.a' -exec rm {} \;
 }
 
 echo "start build and install to $PREFIX"
