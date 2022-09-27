@@ -130,12 +130,11 @@ build_rootfs()
     local NAME=${TAR%-*}
     local CONFIG=$2
     local MAKEOPTS=$3
-    local BUILD=build-rootfs_$NAME
 
     tarball_fetch_and_extract $URI
 
     local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     $SRC_DIR/$NAME/configure $CONFIG
     make -j$JOBS $MAKEOPTS
     make $MAKEOPTS install
@@ -252,7 +251,7 @@ rootfs_busybox()
     tarball_fetch_and_extract $URI_BUSYBOX
 
     local NAME=$(echo "$URI_BUSYBOX" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     cp -a $SRC_DIR/$NAME/* .
     # please disable rpc feature of inetd manully
     make menuconfig
