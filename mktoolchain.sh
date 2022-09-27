@@ -2,7 +2,7 @@
 
 usage()
 {
-    echo "Usage: toolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]"
+    echo "Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]"
     echo ""
     echo "  {ARCH}    arm | i686 | x86_64 | ..."
     echo "  {COMMAND} binutils"
