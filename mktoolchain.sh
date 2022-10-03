@@ -1,5 +1,9 @@
 #!/bin/sh
 
+##
+# usage
+#
+
 usage()
 {
     echo "Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]"
@@ -25,16 +29,21 @@ usage()
     echo "  [WORKSPACE] base directory which include the source files [default: $(pwd)]"
 }
 
-# usage
 [ -z "$1" ] || [ "$1" == "--help" ] && usage && exit
 
-# environment
+##
+# setup gcc version
+#
+
+source $SCRIPT_DIR/version-gcc-4.9.4
+
+##
+# parse cmdline & setup dir environment
+#
+
 PWD=$(pwd)
 SCRIPT_PATH=$0
 SCRIPT_DIR=${SCRIPT_PATH%/*}
-
-CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
-CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
 
 ARCH=$1
 COMMAND=$(echo "$2" |tr [A-Z] [a-z])
@@ -54,6 +63,18 @@ elif [ -z $(echo "$4" |grep -e '^/') ]; then
 else
     WORKSPACE=$4
 fi
+
+DIST_DIR=$WORKSPACE/dist
+SRC_DIR=$WORKSPACE/src
+BUILD_DIR=$WORKSPACE/build
+mkdir -p $DIST_DIR $SRC_DIR $BUILD_DIR
+
+##
+# target & compiler
+#
+
+CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
+CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
 
 TARGET=$ARCH-none-linux-gnu
 [ "$ARCH" == "arm" ] && TARGET+=eabi
@@ -76,10 +97,9 @@ Darwin)
     ;;
 esac
 
-DIST_DIR=$WORKSPACE/dist
-SRC_DIR=$WORKSPACE/src
-BUILD_DIR=$WORKSPACE/build
-mkdir -p $DIST_DIR $SRC_DIR $BUILD_DIR
+##
+# for rootfs only
+#
 
 if [[ $COMMAND =~ "rootfs" ]]; then
     ROOTFS=$PREFIX-rootfs
@@ -98,9 +118,10 @@ if [[ $COMMAND =~ "rootfs" ]]; then
     RPATH='-Wl,-rpath,$$\ORIGIN:$$\ORIGIN/../lib'
 fi
 
-source $SCRIPT_DIR/version-gcc-4.9.4
+##
+# common functions
+#
 
-# common funcs
 tarball_fetch_and_extract()
 {
     local URI=$1
@@ -123,25 +144,10 @@ tarball_fetch_and_extract()
     fi
 }
 
-build_rootfs()
-{
-    local URI=$1
-    local TAR=${URI##*/}
-    local NAME=${TAR%-*}
-    local CONFIG=$2
-    local MAKEOPTS=$3
+##
+# toolchain functions
+#
 
-    tarball_fetch_and_extract $URI
-
-    local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
-    $SRC_DIR/$NAME/configure $CONFIG
-    make -j$JOBS $MAKEOPTS
-    make $MAKEOPTS install
-    cd -
-}
-
-# main
 binutils()
 {
     tarball_fetch_and_extract $URI_BINUTILS
@@ -246,6 +252,10 @@ gcc()
     cd -
 }
 
+##
+# rootfs functions
+#
+
 rootfs_busybox()
 {
     tarball_fetch_and_extract $URI_BUSYBOX
@@ -275,12 +285,34 @@ rootfs_glibc()
     cd -
 }
 
+build_rootfs()
+{
+    local URI=$1
+    local TAR=${URI##*/}
+    local NAME=${TAR%-*}
+    local CONFIG=$2
+    local MAKEOPTS=$3
+
+    tarball_fetch_and_extract $URI
+
+    local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    $SRC_DIR/$NAME/configure $CONFIG
+    make -j$JOBS $MAKEOPTS
+    make $MAKEOPTS install
+    cd -
+}
+
 simplify_rootfs()
 {
     cp -a $ROOTFS $ROOTFS-stripped
     find $ROOTFS-stripped -type f -perm -0111 -exec $TARGET-strip {} \;
     find $ROOTFS-stripped -type f -name '*.a' -exec rm {} \;
 }
+
+##
+# main: command parser
+#
 
 echo "start build and install to $PREFIX"
 cd $WORKSPACE
