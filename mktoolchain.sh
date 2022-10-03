@@ -330,7 +330,6 @@ rootfs_busybox()
     local NAME=$(echo "$URI_BUSYBOX" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     cp -a $SRC_DIR/$NAME/* .
-    # please disable rpc feature of inetd manully
     make defconfig
     make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS ||
         err_exit "build rootfs_busybox failed"
@@ -367,9 +366,17 @@ rootfs_readline()
 
 rootfs_ncurses()
 {
-    build_rootfs $URI_NCURSES \
-        "$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib" \
-        "-C ncurses"
+    tarball_fetch_and_extract $URI_NCURSES
+
+    local NAME=$(echo "$URI_NCURSES" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    $SRC_DIR/$NAME/configure $ROOTFS_CONFIG \
+        --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib
+    # first make always failed ...
+    make -j$JOBS -C ncurses || make -j$JOBS -C ncurses ||
+        err_exit "build rootfs_$NAME failed"
+    make $MAKEOPTS install
+    cd -
 }
 
 rootfs_gdb()
@@ -424,8 +431,8 @@ all_rootfs()
 
 all()
 {
-    all_compilers
-    all_rootfs
+    do_build all_compilers
+    do_build all_rootfs
 }
 
 ##
