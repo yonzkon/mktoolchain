@@ -7,7 +7,6 @@
 usage()
 {
     echo "Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]"
-    echo ""
     echo "  {ARCH}    arm | i686 | x86_64 | ..."
     echo "  {COMMAND} binutils"
     echo "            linux_uapi_headers"
@@ -16,6 +15,7 @@ usage()
     echo "            gcc_libgcc"
     echo "            glibc"
     echo "            gcc"
+    echo ""
     echo "            rootfs_base"
     echo "            rootfs_busybox"
     echo "            rootfs_glibc"
@@ -24,7 +24,11 @@ usage()
     echo "            rootfs_gdb"
     echo "            rootfs_binutils"
     echo "            rootfs_bash"
-    echo "            simplify_rootfs"
+    echo "            strip_rootfs"
+    echo ""
+    echo "            all_compilers"
+    echo "            all_rootfs"
+    echo "            all"
     echo "  [PREFIX]  where to install the toolchain [default: $(pwd)/_install/$ARCH]"
     echo "  [WORKSPACE] base directory which include the source files [default: $(pwd)]"
 }
@@ -97,7 +101,7 @@ esac
 # for rootfs only
 #
 
-if [[ $COMMAND =~ "rootfs" ]]; then
+if [[ $COMMAND =~ "rootfs" ]] || [[ $COMMAND = "all" ]]; then
     ROOTFS=$PREFIX-rootfs
     ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
     # env below is not necesarry as set --host=$TARGET
@@ -112,6 +116,7 @@ if [[ $COMMAND =~ "rootfs" ]]; then
     CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
     PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
     RPATH='-Wl,-rpath,$$\ORIGIN:$$\ORIGIN/../lib'
+    mkdir -p $ROOTFS
 fi
 
 ##
@@ -209,10 +214,15 @@ glibc_headers_and_startup_files()
 
     local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
-    $SRC_DIR/$NAME/configure --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
-        --disable-multilib --with-headers=$PREFIX/$TARGET/include --without-selinux \
+    $SRC_DIR/$NAME/configure \
+        --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
+        --with-headers=$PREFIX/$TARGET/include \
+        --disable-multilib \
+        --without-selinux \
+        --enable-obsolete-rpc \
         libc_cv_forced_unwind=yes \
-        libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
+        libc_cv_ssp=no \
+        libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
     make install-bootstrap-headers=yes install-headers
     make -j$JOBS csu/subdir_lib
     install csu/crt1.o csu/crti.o csu/crtn.o $PREFIX/$TARGET/lib
@@ -252,9 +262,27 @@ gcc()
 # rootfs functions
 #
 
+build_rootfs()
+{
+    local URI=$1
+    local TAR=${URI##*/}
+    local NAME=${TAR%-*}
+    local CONFIG=$2
+    local MAKEOPTS=$3
+
+    tarball_fetch_and_extract $URI
+
+    local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    $SRC_DIR/$NAME/configure $CONFIG
+    make -j$JOBS $MAKEOPTS
+    make $MAKEOPTS install
+    cd -
+}
+
 rootfs_base()
 {
-    cd $ROOTFS
+    mkdir -p $ROOTFS && cd $ROOTFS
     mkdir -p etc dev proc sys tmp var
     mkdir -p dev/pts
     mkdir -p dev/shm
@@ -277,7 +305,7 @@ rootfs_busybox()
     mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     cp -a $SRC_DIR/$NAME/* .
     # please disable rpc feature of inetd manully
-    make menuconfig
+    make defconfig
     make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS
     # busybox use "./_install" as default install dir like us
     mkdir -p $ROOTFS && cp -a _install/* $ROOTFS
@@ -288,39 +316,89 @@ rootfs_glibc()
 {
     local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
-    $SRC_DIR/$NAME/configure --prefix=/usr --build=$MACHTYPE --host=$TARGET \
-        --disable-multilib --with-headers=$PREFIX/$TARGET/include \
+    $SRC_DIR/$NAME/configure \
+        --prefix=/usr --build=$MACHTYPE --host=$TARGET \
+        --with-headers=$PREFIX/$TARGET/include \
+        --disable-multilib \
+        --without-selinux \
+        --enable-obsolete-rpc \
         libc_cv_forced_unwind=yes \
-        libc_cv_ssp=no libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
+        libc_cv_ssp=no \
+        libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
     make -j$JOBS
     make install install_root=$ROOTFS
     sed -i 's#/lib/##g' $ROOTFS/lib/libc.so $ROOTFS/lib/libm.so $ROOTFS/lib/libpthread.so
     cd -
 }
 
-build_rootfs()
+rootfs_readline()
 {
-    local URI=$1
-    local TAR=${URI##*/}
-    local NAME=${TAR%-*}
-    local CONFIG=$2
-    local MAKEOPTS=$3
-
-    tarball_fetch_and_extract $URI
-
-    local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
-    $SRC_DIR/$NAME/configure $CONFIG
-    make -j$JOBS $MAKEOPTS
-    make $MAKEOPTS install
-    cd -
+    export bash_cv_wcwidth_broken=yes && build_rootfs $URI_READLINE \
+        "$ROOTFS_CONFIG --prefix=/usr --libdir=/lib --enable-shared --disable-static" \
+        "DESTDIR=$ROOTFS" #bash_cv_wcwidth_broken=yes
 }
 
-simplify_rootfs()
+rootfs_ncurses()
+{
+    build_rootfs $URI_NCURSES \
+        "$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib" \
+        "-C ncurses"
+}
+
+rootfs_gdb()
+{
+    build_rootfs $URI_GDB "$ROOTFS_CONFIG"
+}
+
+rootfs_binutils()
+{
+    build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib"
+}
+
+rootfs_bash()
+{
+    build_rootfs $URI_BASH "$ROOTFS_CONFIG"
+}
+
+strip_rootfs()
 {
     cp -a $ROOTFS $ROOTFS-stripped
     find $ROOTFS-stripped -type f -perm -0111 -exec $TARGET-strip {} \;
     find $ROOTFS-stripped -type f -name '*.a' -exec rm {} \;
+}
+
+##
+# convenient functions
+#
+
+all_compilers()
+{
+    binutils
+    linux_uapi_headers
+    gcc_compilers
+    glibc_headers_and_startup_files
+    gcc_libgcc
+    glibc
+    gcc
+}
+
+all_rootfs()
+{
+    rootfs_base
+    rootfs_busybox
+    rootfs_glibc
+    rootfs_readline
+    rootfs_ncurses
+    rootfs_gdb
+    rootfs_binutils
+    rootfs_bash
+    strip_rootfs
+}
+
+all()
+{
+    all_compilers
+    all_rootfs
 }
 
 ##
@@ -338,19 +416,20 @@ case "$COMMAND" in
     gcc_libgcc) gcc_libgcc;;
     glibc) glibc;;
     gcc) gcc;;
+
     rootfs_base) rootfs_base ;;
     rootfs_busybox) rootfs_busybox ;;
     rootfs_glibc) rootfs_glibc ;;
-    rootfs_readline) export bash_cv_wcwidth_broken=yes && build_rootfs $URI_READLINE \
-        "$ROOTFS_CONFIG --prefix=/usr --libdir=/lib --enable-shared --disable-static" \
-        "DESTDIR=$ROOTFS" ;; #bash_cv_wcwidth_broken=yes
-    rootfs_ncurses) build_rootfs $URI_NCURSES \
-        "$ROOTFS_CONFIG --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib" \
-        "-C ncurses" ;;
-    rootfs_gdb) build_rootfs $URI_GDB "$ROOTFS_CONFIG" ;;
-    rootfs_binutils) build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib" ;;
-    rootfs_bash) build_rootfs $URI_BASH "$ROOTFS_CONFIG" ;;
-    simplify_rootfs) simplify_rootfs ;;
+    rootfs_readline) rootfs_readline ;;
+    rootfs_ncurses) rootfs_ncurses ;;
+    rootfs_gdb) rootfs_gdb ;;
+    rootfs_binutils) rootfs_binutils ;;
+    rootfs_bash) rootfs_bash ;;
+    strip_rootfs) strip_rootfs ;;
+
+    all_compilers) all_compilers ;;
+    all_rootfs) all_rootfs ;;
+    all) all ;;
     *) usage && exit ;;
 esac
 
