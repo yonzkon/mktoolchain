@@ -16,8 +16,7 @@ trap ":" INT QUIT TSTP
 # setup rootfs
 #
 
-mkdir -p /dev /mnt /proc /sys /tmp /var
-chmod 1777 /tmp
+mkdir -p /dev /proc /sys /tmp /var
 
 /bin/mount -n -t proc none /proc
 /bin/mount -n -t sysfs none /sys
@@ -26,7 +25,6 @@ chmod 1777 /tmp
 
 echo /sbin/mdev > /proc/sys/kernel/hotplug
 /sbin/mdev -s
-/bin/hotplug
 
 mkdir -p /dev/pts
 mkdir -p /dev/shm
@@ -46,13 +44,10 @@ mkdir -p /var/tmp
 
 /sbin/hwclock -s -f /dev/rtc
 
-syslogd
+/sbin/syslogd
 
 /sbin/ifconfig lo 127.0.0.1
 /etc/init.d/ifconfig-eth0
 
-#start ftp server user:root password:
-/sbin/vsftpd &
-
-#start telnetd server usr:root password:
-/sbin/telnetd
+/usr/sbin/telnetd
+tcpsvd -vE 0.0.0.0 21 ftpd /srv &

@@ -309,7 +309,7 @@ build_rootfs()
 rootfs_base()
 {
     mkdir -p $ROOTFS && cd $ROOTFS
-    mkdir -p etc dev proc sys tmp var
+    mkdir -p etc dev proc sys tmp var opt mnt srv
     mkdir -p dev/pts
     mkdir -p dev/shm
     mkdir -p var/empty
