@@ -14,8 +14,7 @@ Make cross toolchains.
 ### mktoolchain.sh
 ```
 Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]
-
-  {ARCH}    arm | i686 | x86_64 | ...
+  {ARCH}    arm | aarch64 | i686 | x86_64 | ...
   {COMMAND} binutils
             linux_uapi_headers
             gcc_compilers
@@ -23,23 +22,25 @@ Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]
             gcc_libgcc
             glibc
             gcc
+
             rootfs_busybox
             rootfs_glibc
             rootfs_readline
             rootfs_ncurses
             rootfs_gdb
             rootfs_binutils
-            rootfs_make
             rootfs_bash
-            simplify_rootfs
+            strip_rootfs
 
+            all_compilers
+            all_rootfs
+            all
   [PREFIX]  where to install the toolchain [default: $(pwd)/_install/$ARCH]"
   [WORKSPACE] base directory which include the source files [default: $(pwd)]"
 ```
 ```
-./mktoolchain.sh arm binutils
-./mktoolchain.sh arm linux_uapi_headers
-...
+./mktoolchain.sh arm all_compilers
+./mktoolchain.sh arm all_rootfs
 ```
 
 ### mktoolchain.pl

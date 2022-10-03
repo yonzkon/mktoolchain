@@ -7,7 +7,7 @@
 usage()
 {
     echo "Usage: mktoolchian.sh {ARCH} {COMMAND} [PREFIX, [WORKSPACE]]"
-    echo "  {ARCH}    arm | i686 | x86_64 | ..."
+    echo "  {ARCH}    arm | aarch64 | i686 | x86_64 | ..."
     echo "  {COMMAND} binutils"
     echo "            linux_uapi_headers"
     echo "            gcc_compilers"
