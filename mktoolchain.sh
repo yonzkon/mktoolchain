@@ -23,7 +23,6 @@ usage()
     echo "            rootfs_ncurses"
     echo "            rootfs_gdb"
     echo "            rootfs_binutils"
-    echo "            rootfs_make"
     echo "            rootfs_bash"
     echo "            simplify_rootfs"
     echo "  [PREFIX]  where to install the toolchain [default: $(pwd)/_install/$ARCH]"
@@ -350,7 +349,6 @@ case "$COMMAND" in
         "-C ncurses" ;;
     rootfs_gdb) build_rootfs $URI_GDB "$ROOTFS_CONFIG" ;;
     rootfs_binutils) build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib" ;;
-    rootfs_make) build_rootfs $URI_MAKE "$ROOTFS_CONFIG --without-guile" ;;
     rootfs_bash) build_rootfs $URI_BASH "$ROOTFS_CONFIG" ;;
     simplify_rootfs) simplify_rootfs ;;
     *) usage && exit ;;
