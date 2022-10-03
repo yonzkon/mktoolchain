@@ -123,6 +123,28 @@ fi
 # common functions
 #
 
+# echo -e "\e[30m 黑色 \e[0m"
+# echo -e "\e[31m 红色 \e[0m"
+# echo -e "\e[32m 绿色 \e[0m"
+# echo -e "\e[33m 黄色 \e[0m"
+# echo -e "\e[34m 蓝色 \e[0m"
+# echo -e "\e[35m 紫色 \e[0m"
+# echo -e "\e[36m 青色 \e[0m"
+# echo -e "\e[37m 白色 \e[0m"
+
+do_build()
+{
+    echo -e "\033[32m($(date '+%Y-%m-%d %H:%M:%S')): Building $1\033[0m"
+    $*
+    echo -e "\033[32m($(date '+%Y-%m-%d %H:%M:%S')): Finished $1\033[0m"
+}
+
+err_exit()
+{
+    echo -e "\033[31m($(date '+%Y-%m-%d %H:%M:%S')): $1\033[0m"
+    exit
+}
+
 tarball_fetch_and_extract()
 {
     local URI=$1
@@ -156,7 +178,7 @@ binutils()
     local NAME=$(echo "$URI_BINUTILS" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
     $SRC_DIR/$NAME/configure --prefix=$PREFIX --target=$TARGET --disable-multilib
-    make -j$JOBS
+    make -j$JOBS || err_exit "build binutils failed"
     make install
     cd -
 }
@@ -176,6 +198,10 @@ linux_uapi_headers()
 gcc_compilers()
 {
     tarball_fetch_and_extract $URI_GCC
+    if [[ $URI_GCC =~ "gcc-4.9.4" ]]; then
+        sed -ie 's/spill_indirect_levels++;/spill_indirect_levels = spill_indirect_levels + 1;/g' \
+            $SRC_DIR/gcc-4.9.4/gcc/reload1.c
+    fi
     tarball_fetch_and_extract $URI_GMP
     tarball_fetch_and_extract $URI_MPFR
     tarball_fetch_and_extract $URI_MPC
@@ -203,7 +229,7 @@ gcc_compilers()
     mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
     $SRC_DIR/$NAME/configure --prefix=$PREFIX --target=$TARGET \
         --enable-languages=c,c++ --disable-multilib
-    make -j$JOBS all-gcc
+    make -j$JOBS all-gcc || err_exit "build gcc_compilers failed"
     make install-gcc
     cd -
 }
@@ -224,7 +250,7 @@ glibc_headers_and_startup_files()
         libc_cv_ssp=no \
         libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
     make install-bootstrap-headers=yes install-headers
-    make -j$JOBS csu/subdir_lib
+    make -j$JOBS csu/subdir_lib || err_exit "build glibc headers failed"
     install csu/crt1.o csu/crti.o csu/crtn.o $PREFIX/$TARGET/lib
     $TARGET-gcc -nostdlib -nostartfiles -shared -x c /dev/null -o $PREFIX/$TARGET/lib/libc.so
     touch $PREFIX/$TARGET/include/gnu/stubs.h
@@ -235,7 +261,7 @@ gcc_libgcc()
 {
     local NAME=$(echo "$URI_GCC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     cd $BUILD_DIR/$TARGET/$NAME
-    make -j$JOBS all-target-libgcc
+    make -j$JOBS all-target-libgcc || err_exit "build gcc_libgcc failed"
     make install-target-libgcc
     cd -
 }
@@ -244,7 +270,7 @@ glibc()
 {
     local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     cd $BUILD_DIR/$TARGET/$NAME
-    make -j$JOBS
+    make -j$JOBS || err_exit "build glibc failed"
     make install
     cd -
 }
@@ -253,7 +279,7 @@ gcc()
 {
     local NAME=$(echo "$URI_GCC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     cd $BUILD_DIR/$TARGET/$NAME
-    make -j$JOBS
+    make -j$JOBS || err_exit "build gcc failed"
     make install
     cd -
 }
@@ -275,7 +301,7 @@ build_rootfs()
     local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
     mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     $SRC_DIR/$NAME/configure $CONFIG
-    make -j$JOBS $MAKEOPTS
+    make -j$JOBS $MAKEOPTS || err_exit "build rootfs_$NAME failed"
     make $MAKEOPTS install
     cd -
 }
@@ -306,7 +332,8 @@ rootfs_busybox()
     cp -a $SRC_DIR/$NAME/* .
     # please disable rpc feature of inetd manully
     make defconfig
-    make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS
+    make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS ||
+        err_exit "build rootfs_busybox failed"
     # busybox use "./_install" as default install dir like us
     mkdir -p $ROOTFS && cp -a _install/* $ROOTFS
     cd -
@@ -325,7 +352,7 @@ rootfs_glibc()
         libc_cv_forced_unwind=yes \
         libc_cv_ssp=no \
         libc_cv_ssp_strong=no # libc_cv_ssp is to resolv __stack_chk_gurad for x86_64
-    make -j$JOBS
+    make -j$JOBS || err_exit "build rootfs_glibc failed"
     make install install_root=$ROOTFS
     sed -i 's#/lib/##g' $ROOTFS/lib/libc.so $ROOTFS/lib/libm.so $ROOTFS/lib/libpthread.so
     cd -
@@ -373,26 +400,26 @@ strip_rootfs()
 
 all_compilers()
 {
-    binutils
-    linux_uapi_headers
-    gcc_compilers
-    glibc_headers_and_startup_files
-    gcc_libgcc
-    glibc
-    gcc
+    do_build binutils
+    do_build linux_uapi_headers
+    do_build gcc_compilers
+    do_build glibc_headers_and_startup_files
+    do_build gcc_libgcc
+    do_build glibc
+    do_build gcc
 }
 
 all_rootfs()
 {
-    rootfs_base
-    rootfs_busybox
-    rootfs_glibc
-    rootfs_readline
-    rootfs_ncurses
-    rootfs_gdb
-    rootfs_binutils
-    rootfs_bash
-    strip_rootfs
+    do_build rootfs_base
+    do_build rootfs_busybox
+    do_build rootfs_glibc
+    do_build rootfs_readline
+    do_build rootfs_ncurses
+    do_build rootfs_gdb
+    do_build rootfs_binutils
+    do_build rootfs_bash
+    do_build strip_rootfs
 }
 
 all()
@@ -409,27 +436,27 @@ echo "start build and install to $PREFIX"
 cd $WORKSPACE
 
 case "$COMMAND" in
-    binutils) binutils;;
-    linux_uapi_headers) linux_uapi_headers;;
-    gcc_compilers) gcc_compilers;;
-    glibc_headers_and_startup_files) glibc_headers_and_startup_files;;
-    gcc_libgcc) gcc_libgcc;;
-    glibc) glibc;;
-    gcc) gcc;;
+    binutils) do_build binutils;;
+    linux_uapi_headers) do_build linux_uapi_headers;;
+    gcc_compilers) do_build gcc_compilers;;
+    glibc_headers_and_startup_files) do_build glibc_headers_and_startup_files;;
+    gcc_libgcc) do_build gcc_libgcc;;
+    glibc) do_build glibc;;
+    gcc) do_build gcc;;
 
-    rootfs_base) rootfs_base ;;
-    rootfs_busybox) rootfs_busybox ;;
-    rootfs_glibc) rootfs_glibc ;;
-    rootfs_readline) rootfs_readline ;;
-    rootfs_ncurses) rootfs_ncurses ;;
-    rootfs_gdb) rootfs_gdb ;;
-    rootfs_binutils) rootfs_binutils ;;
-    rootfs_bash) rootfs_bash ;;
-    strip_rootfs) strip_rootfs ;;
+    rootfs_base) do_build rootfs_base ;;
+    rootfs_busybox) do_build rootfs_busybox ;;
+    rootfs_glibc) do_build rootfs_glibc ;;
+    rootfs_readline) do_build rootfs_readline ;;
+    rootfs_ncurses) do_build rootfs_ncurses ;;
+    rootfs_gdb) do_build rootfs_gdb ;;
+    rootfs_binutils) do_build rootfs_binutils ;;
+    rootfs_bash) do_build rootfs_bash ;;
+    strip_rootfs) do_build strip_rootfs ;;
 
-    all_compilers) all_compilers ;;
-    all_rootfs) all_rootfs ;;
-    all) all ;;
+    all_compilers) do_build all_compilers ;;
+    all_rootfs) do_build all_rootfs ;;
+    all) do_build all ;;
     *) usage && exit ;;
 esac
 
