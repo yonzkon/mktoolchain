@@ -16,6 +16,7 @@ usage()
     echo "            gcc_libgcc"
     echo "            glibc"
     echo "            gcc"
+    echo "            rootfs_base"
     echo "            rootfs_busybox"
     echo "            rootfs_glibc"
     echo "            rootfs_readline"
@@ -30,12 +31,6 @@ usage()
 }
 
 [ -z "$1" ] || [ "$1" == "--help" ] && usage && exit
-
-##
-# setup gcc version
-#
-
-source $SCRIPT_DIR/version-gcc-4.9.4
 
 ##
 # parse cmdline & setup dir environment
@@ -72,6 +67,8 @@ mkdir -p $DIST_DIR $SRC_DIR $BUILD_DIR
 ##
 # target & compiler
 #
+
+source $SCRIPT_DIR/version-gcc-4.9.4
 
 CFLAGS='-O2 -pipe -fomit-frame-pointer' #-fno-stack-protector
 CXXFLAGS='-O2 -pipe -fomit-frame-pointer'
@@ -256,6 +253,23 @@ gcc()
 # rootfs functions
 #
 
+rootfs_base()
+{
+    cd $ROOTFS
+    mkdir -p etc dev proc sys tmp var
+    mkdir -p dev/pts
+    mkdir -p dev/shm
+    mkdir -p var/empty
+    mkdir -p var/log
+    mkdir -p var/lock
+    mkdir -p var/run
+    mkdir -p var/tmp
+    mkdir -p root home
+    chmod 1777 tmp var/tmp
+    cp -a $SCRIPT_DIR/rootfs-etc/* ./etc/
+    cd -
+}
+
 rootfs_busybox()
 {
     tarball_fetch_and_extract $URI_BUSYBOX
@@ -325,6 +339,7 @@ case "$COMMAND" in
     gcc_libgcc) gcc_libgcc;;
     glibc) glibc;;
     gcc) gcc;;
+    rootfs_base) rootfs_base ;;
     rootfs_busybox) rootfs_busybox ;;
     rootfs_glibc) rootfs_glibc ;;
     rootfs_readline) export bash_cv_wcwidth_broken=yes && build_rootfs $URI_READLINE \
