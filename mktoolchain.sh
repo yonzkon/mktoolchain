@@ -38,7 +38,7 @@ usage()
 
 PWD=$(pwd)
 SCRIPT_PATH=$0
-SCRIPT_DIR=${SCRIPT_PATH%/*}
+SCRIPT_DIR=$(dirname $(readlink -f $0))
 
 ARCH=$1
 COMMAND=$(echo "$2" |tr [A-Z] [a-z])
