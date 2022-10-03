@@ -331,6 +331,8 @@ rootfs_busybox()
     mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
     cp -a $SRC_DIR/$NAME/* .
     make defconfig
+    sed -ie 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/g' \
+        $BUILD_DIR/$TARGET/$NAME-rootfs/.config
     make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- install -j$JOBS ||
         err_exit "build rootfs_busybox failed"
     # busybox use "./_install" as default install dir like us
