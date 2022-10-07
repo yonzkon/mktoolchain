@@ -8,6 +8,8 @@ dist: trusty
 fail_fast: true
 
 script:
+  - ./mktoolchain.sh arm all
+  - ./mktoolchain.sh aaarch64 all
   - ./mktoolchain.pl --arch arm --libc glibc -j2
   - ./mktoolchain.pl --arch arm --libc musl -j2
   - ./mktoolchain.pl --arch aarch64 --libc glibc -j2
