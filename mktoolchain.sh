@@ -23,7 +23,7 @@ usage()
     echo "            rootfs_ncurses"
     echo "            rootfs_gdb"
     echo "            rootfs_binutils"
-    echo "            rootfs_bash"
+    echo "            rootfs_mtd-utils"
     echo "            strip_rootfs"
     echo ""
     echo "            all_compilers"
@@ -105,17 +105,17 @@ if [[ $COMMAND =~ "rootfs" ]] || [[ $COMMAND = "all" ]]; then
     ROOTFS=$PREFIX-rootfs
     ROOTFS_CONFIG="--prefix=$ROOTFS/usr --build=$MACHTYPE --host=$TARGET"
     # env below is not necesarry as set --host=$TARGET
-    #CC=$TARGET-gcc
-    #CXX=$TARGET-g++
-    #CPP=$TARGET-cpp
-    #AS=$TARGET-as
-    #LD=$TARGET-ld
-    #STRIP=$TARGET-strip
-    LD_LIBRARY_PATH=$ROOTFS/lib
-    C_INCLUDE_PATH=$ROOTFS/include
-    CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
-    PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
-    RPATH='-Wl,-rpath,$$\ORIGIN:$$\ORIGIN/../lib'
+    export CC=$TARGET-gcc
+    export CXX=$TARGET-g++
+    export CPP=$TARGET-cpp
+    export AS=$TARGET-as
+    export LD=$TARGET-ld
+    export STRIP=$TARGET-strip
+    export LIBRARY_PATH=$ROOTFS/usr/lib
+    export C_INCLUDE_PATH=$ROOTFS/usr/include
+    export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
+    export PKG_CONFIG_PATH=$ROOTFS/lib/pkgconfig:$PKG_CONFIG_PATH
+    export RPATH='-Wl,-rpath,$$\ORIGIN:$$\ORIGIN/../lib'
     mkdir -p $ROOTFS
 fi
 
@@ -167,6 +167,26 @@ tarball_fetch_and_extract()
     fi
 }
 
+git_fetch_and_checkout()
+{
+    local URI=$1
+    local GIT_URI=${URI%@*}
+    local NAME=$(echo ${GIT_URI##*/} |sed -e 's/.git//g')
+    local VERSION=${URI##*@}
+
+    if [ ! -e $SRC_DIR/$NAME ]; then
+        git clone $GIT_URI $SRC_DIR/$NAME
+        if [ $? -ne 0 ]; then
+            echo "failed to fetch $GIT_URI...exit"
+            exit
+        fi
+        cd $SRC_DIR/$NAME
+        git switch -c $VERSION
+        [ -e ./autogen.sh ] && ./autogen.sh
+        cd -
+    fi
+}
+
 ##
 # toolchain functions
 #
@@ -176,7 +196,8 @@ binutils()
     tarball_fetch_and_extract $URI_BINUTILS
 
     local NAME=$(echo "$URI_BINUTILS" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    mkdir -p $BUILD_DIR/$TARGET/$NAME
+    cd $BUILD_DIR/$TARGET/$NAME
     $SRC_DIR/$NAME/configure --prefix=$PREFIX --target=$TARGET --disable-multilib
     make -j$JOBS || err_exit "build binutils failed"
     make install
@@ -239,7 +260,8 @@ glibc_headers_and_startup_files()
     tarball_fetch_and_extract $URI_GLIBC
 
     local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME && cd $BUILD_DIR/$TARGET/$NAME
+    mkdir -p $BUILD_DIR/$TARGET/$NAME
+    cd $BUILD_DIR/$TARGET/$NAME
     $SRC_DIR/$NAME/configure \
         --prefix=$PREFIX/$TARGET --build=$MACHTYPE --host=$TARGET \
         --with-headers=$PREFIX/$TARGET/include \
@@ -299,7 +321,8 @@ build_rootfs()
     tarball_fetch_and_extract $URI
 
     local NAME=$(echo "$URI" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
     $SRC_DIR/$NAME/configure $CONFIG
     make -j$JOBS $MAKEOPTS || err_exit "build rootfs_$NAME failed"
     make $MAKEOPTS install
@@ -308,7 +331,8 @@ build_rootfs()
 
 rootfs_base()
 {
-    mkdir -p $ROOTFS && cd $ROOTFS
+    mkdir -p $ROOTFS
+    cd $ROOTFS
     mkdir -p etc dev proc sys tmp var opt mnt srv
     mkdir -p dev/pts
     mkdir -p dev/shm
@@ -328,7 +352,8 @@ rootfs_busybox()
     tarball_fetch_and_extract $URI_BUSYBOX
 
     local NAME=$(echo "$URI_BUSYBOX" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
     cp -a $SRC_DIR/$NAME/* .
     make defconfig
     sed -ie 's/# CONFIG_STATIC is not set/CONFIG_STATIC=y/g' \
@@ -343,7 +368,8 @@ rootfs_busybox()
 rootfs_glibc()
 {
     local NAME=$(echo "$URI_GLIBC" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
     $SRC_DIR/$NAME/configure \
         --prefix=/usr --build=$MACHTYPE --host=$TARGET \
         --with-headers=$PREFIX/$TARGET/include \
@@ -371,7 +397,8 @@ rootfs_ncurses()
     tarball_fetch_and_extract $URI_NCURSES
 
     local NAME=$(echo "$URI_NCURSES" |sed -e 's/^.*\///g' |sed -e 's/\.tar.*$//g')
-    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs && cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
     $SRC_DIR/$NAME/configure $ROOTFS_CONFIG \
         --libdir=$ROOTFS/lib --with-shared --without-gpm --with-termlib
     # first make always failed ...
@@ -391,9 +418,52 @@ rootfs_binutils()
     build_rootfs $URI_BINUTILS "$ROOTFS_CONFIG --disable-multilib"
 }
 
-rootfs_bash()
+rootfs_zlib()
 {
-    build_rootfs $URI_BASH "$ROOTFS_CONFIG"
+    git_fetch_and_checkout $GIT_ZLIB
+
+    local NAME=$(echo "$GIT_ZLIB" |sed -e 's/^.*\///g' |sed -e 's/\.git@.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
+
+    CHOST=arm CC=$TARGET-gcc AR=$TARGET-ar RANLIB=$TARGET-ranlib \
+        $SRC_DIR/$NAME/configure --prefix=$ROOTFS/usr --shared
+
+    make -j$JOBS $MAKEOPTS || err_exit "build rootfs_$NAME failed"
+    make $MAKEOPTS install
+    cd -
+}
+
+rootfs_uuid()
+{
+    git_fetch_and_checkout $GIT_UUID
+
+    local NAME=$(echo "$GIT_UUID" |sed -e 's/^.*\///g' |sed -e 's/\.git@.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    $SRC_DIR/$NAME/configure $ROOTFS_CONFIG
+    make -j$JOBS $MAKEOPTS || err_exit "build rootfs_$NAME failed"
+    make $MAKEOPTS install
+    cd -
+}
+
+rootfs_mtd_utils()
+{
+    rootfs_zlib
+    #rootfs_uuid
+    build_rootfs $URI_UUID "$ROOTFS_CONFIG"
+
+    git_fetch_and_checkout $GIT_MTD_UTILS
+
+    local NAME=$(echo "$GIT_MTD_UTILS" |sed -e 's/^.*\///g' |sed -e 's/\.git@.*$//g')
+    mkdir -p $BUILD_DIR/$TARGET/$NAME-rootfs
+    cd $BUILD_DIR/$TARGET/$NAME-rootfs
+    #$SRC_DIR/$NAME/configure $ROOTFS_CONFIG \
+    #    --without-lzo --without-crypto --without-zstd \
+    #    --disable-tests
+    make -j$JOBS $MAKEOPTS || err_exit "build rootfs_$NAME failed"
+    make $MAKEOPTS install
+    cd -
 }
 
 strip_rootfs()
@@ -427,7 +497,7 @@ all_rootfs()
     do_build rootfs_ncurses
     do_build rootfs_gdb
     do_build rootfs_binutils
-    do_build rootfs_bash
+    do_build rootfs_mtd-utils
     do_build strip_rootfs
 }
 
@@ -460,7 +530,7 @@ case "$COMMAND" in
     rootfs_ncurses) do_build rootfs_ncurses ;;
     rootfs_gdb) do_build rootfs_gdb ;;
     rootfs_binutils) do_build rootfs_binutils ;;
-    rootfs_bash) do_build rootfs_bash ;;
+    rootfs_mtd-utils) do_build rootfs_mtd_utils ;;
     strip_rootfs) do_build strip_rootfs ;;
 
     all_compilers) do_build all_compilers ;;
